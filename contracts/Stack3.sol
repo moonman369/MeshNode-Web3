@@ -51,6 +51,7 @@ contract Stack3 is Ownable, ERC1155 {
 
 
     struct Question {
+        bool bestAnswerChosen;
         uint256 id;
         uint256 upvotes;
         uint256 downvotes;
@@ -61,6 +62,7 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
     struct Answer {
+        bool isBestAnswer;
         uint256 id;
         uint256 qid;
         uint256 upvotes;
@@ -94,7 +96,7 @@ contract Stack3 is Ownable, ERC1155 {
 
 
     modifier userExists (address _addr) {
-        require (s_users[_addr].userAddress != address(0), "Stack3: User with passed address does not exist");
+        require (s_users[_addr].userAddress != address(0), "Stack3: Address is not registered as user");
         _;
     }
 
@@ -150,6 +152,14 @@ contract Stack3 is Ownable, ERC1155 {
         emit NewQuestion(block.timestamp, newId, msg.sender);
     }
 
+    function upvoteQuestion (uint256 _qid) external userExists(msg.sender) questionExists(_qid) {
+        s_questions[_qid].upvotes += 1;
+    }
+
+    function downvoteQuestion (uint256 _qid) external userExists(msg.sender) questionExists(_qid) {
+        s_questions[_qid].downvotes += 1;
+    }
+
 
     function postAnswer (uint256 _qid) 
     external
@@ -166,8 +176,26 @@ contract Stack3 is Ownable, ERC1155 {
         s_answers[newId].author = msg.sender;
 
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
-
     }
+
+    function upvoteAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
+        s_answers[_aid].upvotes += 1;
+    }
+
+    function downvoteAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
+        s_answers[_aid].downvotes += 1;
+    }
+
+    function chooseAsBestAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
+        uint256 qid = s_answers[_aid].qid;
+        require (s_questions[qid].author == msg.sender, "Stack3: Caller is not author of the question");
+        require (!s_questions[qid].bestAnswerChosen, "Stack3: Best answer for associated question has already been chosen");
+        require (!s_answers[_aid].isBestAnswer, "Stack3: This answer has already been chosen as the best answer.");
+
+        s_questions[qid].bestAnswerChosen = true;
+        s_answers[_aid].isBestAnswer = true;
+    }
+
 
     function postCommentOnQuestion (uint256 _postId) 
     external 
@@ -247,5 +275,58 @@ contract Stack3 is Ownable, ERC1155 {
         return s_comments[_id];
     }
 
+    function getAnswersByQuestionId (uint256 _qid)
+    public
+    view
+    questionExists (_qid)
+    returns (uint256 [] memory) 
+    {
+        return s_questions[_qid].answers;
+    }
+
+    function getCommentsByQuestionId (uint256 _qid)
+    public
+    view
+    questionExists (_qid)
+    returns (uint256 [] memory)
+    {
+        return s_questions[_qid].comments;
+    }
+
+    function getCommentsByAnswerId (uint256 _aid)
+    public
+    view
+    answerExists (_aid)
+    returns (uint256 [] memory)
+    {
+        return s_answers[_aid].comments;
+    }
+
+    function getQuestionsByUserAddress (address _user)
+    public
+    view
+    userExists (_user)
+    returns (uint256 [] memory)
+    {
+        return s_users[_user].questions;
+    }
+
+    function getAnswersByUserAddress (address _user)
+    public
+    view
+    userExists (_user)
+    returns (uint256 [] memory)
+    {
+        return s_users[_user].answers;
+    }
+
+    function getCommentsByUserAddress (address _user)
+    public
+    view
+    userExists (_user)
+    returns (uint256 [] memory)
+    {
+        return s_users[_user].comments;
+    }
     
 }
