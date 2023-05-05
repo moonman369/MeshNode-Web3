@@ -92,6 +92,28 @@ contract Stack3 is Ownable, ERC1155 {
     mapping (uint256 => Answer) private s_answers;
     mapping (uint256 => Comment) private s_comments;
 
+
+    modifier userExists (address _addr) {
+        require (s_users[_addr].userAddress != address(0), "Stack3: User with passed address does not exist");
+        _;
+    }
+
+    modifier questionExists (uint256 _id) {
+        require (_id > 0 && _id < s_questionIdCounter, "Stack3: Question with passed id does not exist.");
+        _;
+    }
+
+    modifier answerExists (uint256 _id) {
+        require (_id > 0 && _id < s_answerIdCounter, "Stack3: Answer with passed id does not exist.");
+        _;
+    }
+
+    modifier commentExists (uint256 _id) {
+        require (_id > 0 && _id < s_commentIdCounter, "Stack3: Comment with passed id does not exist.");
+        _;
+    }
+
+
     function _initCounters (uint256 _initValue) private {
         s_questionIdCounter = _initValue;
         s_answerIdCounter = _initValue;
@@ -117,7 +139,8 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postQuestion () external {
+    function postQuestion () external userExists(msg.sender) {
+        
         uint256 newId = s_questionIdCounter++;
         s_users[msg.sender].questions.push(newId);
 
@@ -128,7 +151,11 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postAnswer (uint256 _qid) external {
+    function postAnswer (uint256 _qid) 
+    external
+    userExists(msg.sender)
+    questionExists(_qid)
+    {
         uint256 newId = s_answerIdCounter++;
         s_users[msg.sender].answers.push(newId);
 
@@ -142,7 +169,11 @@ contract Stack3 is Ownable, ERC1155 {
 
     }
 
-    function postCommentOnQuestion (uint256 _postId) external {
+    function postCommentOnQuestion (uint256 _postId) 
+    external 
+    userExists(msg.sender)
+    questionExists(_postId)
+    {
         uint256 newId = s_commentIdCounter++;
 
         s_users[msg.sender].comments.push(newId);
@@ -158,7 +189,11 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postCommentOnAnswer (uint256 _postId) external {
+    function postCommentOnAnswer (uint256 _postId) 
+    external
+    userExists(msg.sender)
+    answerExists(_postId) 
+    {
         uint256 newId = s_commentIdCounter++;
 
         s_users[msg.sender].comments.push(newId);
@@ -175,22 +210,39 @@ contract Stack3 is Ownable, ERC1155 {
 
 
 
-    function getUserByAddress (address _userAddress) public view returns (User memory) {
-        require (_userAddress != address(0), "Stack3: Cannot fetch data for null address.");
+    function getUserByAddress (address _userAddress) 
+    public 
+    view 
+    userExists(_userAddress)
+    returns (User memory) 
+    {
         return s_users[_userAddress];
     }
 
-    function getQuestionById (uint256 _id) public view returns (Question memory) {
-        require (_id > 0 && _id < s_questionIdCounter, "Stack3: Invalid question id supplied.");
+    function getQuestionById (uint256 _id) 
+    public 
+    view 
+    questionExists (_id)
+    returns (Question memory) 
+    {
         return s_questions[_id];
     }
 
-    function getAnswerById (uint256 _id) public view returns (Answer memory) {
-        require (_id > 0 && _id < s_answerIdCounter, "Stack3: Invalid answer id supplied.");
+    function getAnswerById (uint256 _id) 
+    public 
+    view 
+    answerExists (_id)
+    returns (Answer memory) 
+    {
         return s_answers[_id];
     }
 
-    function getCommentById (uint256 _id) public view returns (Comment memory) {
+    function getCommentById (uint256 _id) 
+    public 
+    view 
+    commentExists (_id)
+    returns (Comment memory) 
+    {
         require (_id > 0 && _id < s_commentIdCounter, "Stack3: Invalid comment id supplied.");
         return s_comments[_id];
     }
