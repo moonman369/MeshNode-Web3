@@ -56,6 +56,7 @@ contract Stack3 is Ownable, ERC1155 {
         uint256 upvotes;
         uint256 downvotes;
         address author;
+        uint256 [] tags;
         uint256 [] comments;
         uint256 [] answers;
         string uri;
@@ -93,10 +94,20 @@ contract Stack3 is Ownable, ERC1155 {
     mapping (uint256 => Question) private s_questions;
     mapping (uint256 => Answer) private s_answers;
     mapping (uint256 => Comment) private s_comments;
+    
+    mapping (address => mapping (uint256 => bool)) public s_userVotedQuestion;
+    mapping (address => mapping (uint256 => bool)) public s_userVotedAnswer;
+    mapping (address => mapping (uint256 => uint256)) public s_userQuestionTagCounts;
+    mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
 
 
     modifier userExists (address _addr) {
         require (s_users[_addr].userAddress != address(0), "Stack3: Address is not registered as user");
+        _;
+    }
+
+    modifier validPostType (uint8 _type) {
+        require (_type == 0 || _type == 1, "Stack3: Invalid comment id supplied.");
         _;
     }
 
@@ -141,23 +152,33 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postQuestion () external userExists(msg.sender) {
+    function postQuestion (uint256 [] memory _tags) external userExists(msg.sender) {
+        require (_tags.length <= 10, "Stack3: Maximum of 10 tags can be passed.");
         
         uint256 newId = s_questionIdCounter++;
         s_users[msg.sender].questions.push(newId);
 
         s_questions[newId].id = newId;
         s_questions[newId].author = msg.sender;
+        s_questions[newId].tags = _tags;
+
+        for (uint256 i=0; i < _tags.length; i++) {
+            s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
+        }
 
         emit NewQuestion(block.timestamp, newId, msg.sender);
     }
 
-    function upvoteQuestion (uint256 _qid) external userExists(msg.sender) questionExists(_qid) {
-        s_questions[_qid].upvotes += 1;
-    }
+    function voteQuestion (uint256 _qid, int8 _vote) external userExists(msg.sender) questionExists(_qid) {
+        require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has already casted their vote.");
+        require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
+        
+        _vote == 1
+            ? s_questions[_qid].upvotes += 1
+            : s_questions[_qid].downvotes += 1;
 
-    function downvoteQuestion (uint256 _qid) external userExists(msg.sender) questionExists(_qid) {
-        s_questions[_qid].downvotes += 1;
+        s_userVotedQuestion[msg.sender][_qid] = true;    
+
     }
 
 
@@ -175,16 +196,25 @@ contract Stack3 is Ownable, ERC1155 {
         s_answers[newId].qid = _qid;
         s_answers[newId].author = msg.sender;
 
+        for (uint256 i=0; i < s_questions[_qid].tags.length; i++) {
+            s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
+        }
+
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
     }
 
-    function upvoteAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
-        s_answers[_aid].upvotes += 1;
+    function voteAnswer (uint256 _aid, int8 _vote) external userExists(msg.sender) answerExists(_aid) {
+        require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has already casted their vote.");
+        require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
+        
+        _vote == 1
+            ? s_questions[_aid].upvotes += 1
+            : s_questions[_aid].downvotes += 1;
+
+        s_userVotedAnswer[msg.sender][_aid] = true;    
+
     }
 
-    function downvoteAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
-        s_answers[_aid].downvotes += 1;
-    }
 
     function chooseAsBestAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
         uint256 qid = s_answers[_aid].qid;
@@ -197,45 +227,29 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postCommentOnQuestion (uint256 _postId) 
-    external 
-    userExists(msg.sender)
-    questionExists(_postId)
-    {
-        uint256 newId = s_commentIdCounter++;
 
-        s_users[msg.sender].comments.push(newId);
-
-        s_questions[_postId].comments.push(newId);
-
-        s_comments[newId].id = newId;
-        s_comments[newId].parentPostType = PostType.QUESTION;
-        s_comments[newId].parentPostId = _postId;
-        s_comments[newId].author = msg.sender;
-
-        emit NewComment (block.timestamp, newId, PostType.QUESTION, _postId, msg.sender);
-    }
-
-
-    function postCommentOnAnswer (uint256 _postId) 
+    function postComment (uint8 _postType, uint256 _postId) 
     external
     userExists(msg.sender)
+    validPostType (_postType)
     answerExists(_postId) 
     {
         uint256 newId = s_commentIdCounter++;
 
         s_users[msg.sender].comments.push(newId);
 
-        s_answers[_postId].comments.push(newId);
+        PostType(_postType) == PostType.QUESTION 
+            ? s_questions[_postId].comments.push(newId)
+            : s_answers[_postId].comments.push(newId);
 
         s_comments[newId].id = newId;
-        s_comments[newId].parentPostType = PostType.ANSWER;
+        s_comments[newId].parentPostType = PostType(_postType);
+
         s_comments[newId].parentPostId = _postId;
         s_comments[newId].author = msg.sender;
 
-        emit NewComment (block.timestamp, newId, PostType.ANSWER, _postId, msg.sender);
+        emit NewComment (block.timestamp, newId, PostType(_postType), _postId, msg.sender);
     }
-
 
 
     function getUserByAddress (address _userAddress) 
