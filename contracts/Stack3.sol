@@ -115,6 +115,7 @@ contract Stack3 is Ownable, ERC1155 {
 
     
     function registerUser () external {
+        require (_callerIsWallet(msg.sender));
         require (!_userExists(msg.sender), "Stack3: User already registered");
         uint256 newId = s_userIdCounter++;
         
@@ -128,6 +129,7 @@ contract Stack3 is Ownable, ERC1155 {
 
 
     function postQuestion (uint256 [] memory _tags) external {
+        require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_tags.length <= 10, "Stack3: Max tag count is 10");
         
@@ -146,6 +148,7 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
     function voteQuestion (uint256 _qid, int8 _vote) external {
+        require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_qid), "Stack3: Invalid question id");
         require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has voted");
@@ -160,9 +163,8 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postAnswer (uint256 _qid) 
-    external   
-    {
+    function postAnswer (uint256 _qid) external {
+        require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_qid), "Stack3: Invalid question id");
 
@@ -183,6 +185,7 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
     function voteAnswer (uint256 _aid, int8 _vote) external {
+        require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_answerExists(_aid), "Stack3: Invalid answer id");
         require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has already casted their vote.");
@@ -198,6 +201,7 @@ contract Stack3 is Ownable, ERC1155 {
 
 
     function chooseAsBestAnswer (uint256 _aid) external {
+        require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_answerExists(_aid), "Stack3: Invalid answer id");
         uint256 qid = s_answers[_aid].qid;
@@ -212,7 +216,7 @@ contract Stack3 is Ownable, ERC1155 {
 
 
     function postComment (uint8 _postType, uint256 _postId) external {
-
+        require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_postId) || _answerExists(_postId), "Stack3: Invalid post id");
         require (_validPostType(_postType), "Stack3: Invalid post type");
@@ -236,6 +240,9 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
+    function _callerIsWallet (address _addr) internal view returns (bool) {
+        return tx.origin == _addr;
+    }
 
     function _userExists (address _addr) internal view returns (bool) {
         return s_users[_addr].userAddress != address(0);
