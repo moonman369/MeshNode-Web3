@@ -101,32 +101,6 @@ contract Stack3 is Ownable, ERC1155 {
     mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
 
 
-    modifier userExists (address _addr) {
-        require (s_users[_addr].userAddress != address(0), "Stack3: Address is not registered as user");
-        _;
-    }
-
-    modifier validPostType (uint8 _type) {
-        require (_type == 0 || _type == 1, "Stack3: Invalid comment id supplied.");
-        _;
-    }
-
-    modifier questionExists (uint256 _id) {
-        require (_id > 0 && _id < s_questionIdCounter, "Stack3: Question with passed id does not exist.");
-        _;
-    }
-
-    modifier answerExists (uint256 _id) {
-        require (_id > 0 && _id < s_answerIdCounter, "Stack3: Answer with passed id does not exist.");
-        _;
-    }
-
-    modifier commentExists (uint256 _id) {
-        require (_id > 0 && _id < s_commentIdCounter, "Stack3: Comment with passed id does not exist.");
-        _;
-    }
-
-
     function _initCounters (uint256 _initValue) private {
         s_questionIdCounter = _initValue;
         s_answerIdCounter = _initValue;
@@ -141,6 +115,7 @@ contract Stack3 is Ownable, ERC1155 {
 
     
     function registerUser () external {
+        require (!_userExists(msg.sender), "Stack3: User already registered");
         uint256 newId = s_userIdCounter++;
         
         s_users[msg.sender].tokenId = newId;
@@ -152,8 +127,9 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function postQuestion (uint256 [] memory _tags) external userExists(msg.sender) {
-        require (_tags.length <= 10, "Stack3: Maximum of 10 tags can be passed.");
+    function postQuestion (uint256 [] memory _tags) external {
+        require (_userExists(msg.sender), "Stack3: User not registered");
+        require (_tags.length <= 10, "Stack3: Max tag count is 10");
         
         uint256 newId = s_questionIdCounter++;
         s_users[msg.sender].questions.push(newId);
@@ -169,9 +145,11 @@ contract Stack3 is Ownable, ERC1155 {
         emit NewQuestion(block.timestamp, newId, msg.sender);
     }
 
-    function voteQuestion (uint256 _qid, int8 _vote) external userExists(msg.sender) questionExists(_qid) {
-        require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has already casted their vote.");
-        require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
+    function voteQuestion (uint256 _qid, int8 _vote) external {
+        require (_userExists(msg.sender), "Stack3: User not registered");
+        require (_questionExists(_qid), "Stack3: Invalid question id");
+        require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has voted");
+        require (_vote == 1 || _vote == -1, "Stack3: Invalid vote param");
         
         _vote == 1
             ? s_questions[_qid].upvotes += 1
@@ -183,10 +161,11 @@ contract Stack3 is Ownable, ERC1155 {
 
 
     function postAnswer (uint256 _qid) 
-    external
-    userExists(msg.sender)
-    questionExists(_qid)
+    external   
     {
+        require (_userExists(msg.sender), "Stack3: User not registered");
+        require (_questionExists(_qid), "Stack3: Invalid question id");
+
         uint256 newId = s_answerIdCounter++;
         s_users[msg.sender].answers.push(newId);
 
@@ -203,7 +182,9 @@ contract Stack3 is Ownable, ERC1155 {
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
     }
 
-    function voteAnswer (uint256 _aid, int8 _vote) external userExists(msg.sender) answerExists(_aid) {
+    function voteAnswer (uint256 _aid, int8 _vote) external {
+        require (_userExists(msg.sender), "Stack3: User not registered");
+        require (_answerExists(_aid), "Stack3: Invalid answer id");
         require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has already casted their vote.");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
         
@@ -216,11 +197,13 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
-    function chooseAsBestAnswer (uint256 _aid) external userExists(msg.sender) answerExists(_aid) {
+    function chooseAsBestAnswer (uint256 _aid) external {
+        require (_userExists(msg.sender), "Stack3: User not registered");
+        require (_answerExists(_aid), "Stack3: Invalid answer id");
         uint256 qid = s_answers[_aid].qid;
-        require (s_questions[qid].author == msg.sender, "Stack3: Caller is not author of the question");
-        require (!s_questions[qid].bestAnswerChosen, "Stack3: Best answer for associated question has already been chosen");
-        require (!s_answers[_aid].isBestAnswer, "Stack3: This answer has already been chosen as the best answer.");
+        require (s_questions[qid].author == msg.sender, "Stack3: Caller is not author");
+        require (!s_questions[qid].bestAnswerChosen, "Stack3: Best answer for question already chosen");
+        require (!s_answers[_aid].isBestAnswer, "Stack3: This answer is chosen as the best");
 
         s_questions[qid].bestAnswerChosen = true;
         s_answers[_aid].isBestAnswer = true;
@@ -228,12 +211,13 @@ contract Stack3 is Ownable, ERC1155 {
 
 
 
-    function postComment (uint8 _postType, uint256 _postId) 
-    external
-    userExists(msg.sender)
-    validPostType (_postType)
-    answerExists(_postId) 
-    {
+    function postComment (uint8 _postType, uint256 _postId) external {
+
+        require (_userExists(msg.sender), "Stack3: User not registered");
+        require (_questionExists(_postId) || _answerExists(_postId), "Stack3: Invalid post id");
+        require (_validPostType(_postType), "Stack3: Invalid post type");
+        
+
         uint256 newId = s_commentIdCounter++;
 
         s_users[msg.sender].comments.push(newId);
@@ -252,47 +236,68 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
+
+    function _userExists (address _addr) internal view returns (bool) {
+        return s_users[_addr].userAddress != address(0);
+    }
+
+    function _validPostType (uint8 _type) internal pure returns (bool) {
+        return _type == 0 || _type == 1;
+    }
+
+    function _questionExists (uint256 _id) internal view returns (bool) {
+        return _id > 0 && _id < s_questionIdCounter;
+    }
+
+    function _answerExists (uint256 _id) internal view returns (bool) {
+        return _id > 0 && _id < s_answerIdCounter;
+    }
+
+    function _commentExists (uint256 _id) internal view returns (bool) {
+        return _id > 0 && _id < s_commentIdCounter;
+    }
+
+
+
     function getUserByAddress (address _userAddress) 
     public 
     view 
-    userExists(_userAddress)
-    returns (User memory) 
+    returns (User memory)
     {
+        require (_userExists(_userAddress), "Stack3: User not registered");
         return s_users[_userAddress];
     }
 
     function getQuestionById (uint256 _id) 
     public 
     view 
-    questionExists (_id)
     returns (Question memory) 
     {
+        require (_questionExists(_id), "Stack3: Invalid question id");
         return s_questions[_id];
     }
 
     function getAnswerById (uint256 _id) 
     public 
     view 
-    answerExists (_id)
     returns (Answer memory) 
     {
+        require (_answerExists(_id), "Stack3: Invalid answer id");
         return s_answers[_id];
     }
 
     function getCommentById (uint256 _id) 
     public 
     view 
-    commentExists (_id)
     returns (Comment memory) 
     {
-        require (_id > 0 && _id < s_commentIdCounter, "Stack3: Invalid comment id supplied.");
+        require (_commentExists(_id), "Stack3: Invalid comment id");
         return s_comments[_id];
     }
 
     function getAnswersByQuestionId (uint256 _qid)
     public
     view
-    questionExists (_qid)
     returns (uint256 [] memory) 
     {
         return s_questions[_qid].answers;
@@ -301,7 +306,6 @@ contract Stack3 is Ownable, ERC1155 {
     function getCommentsByQuestionId (uint256 _qid)
     public
     view
-    questionExists (_qid)
     returns (uint256 [] memory)
     {
         return s_questions[_qid].comments;
@@ -310,7 +314,6 @@ contract Stack3 is Ownable, ERC1155 {
     function getCommentsByAnswerId (uint256 _aid)
     public
     view
-    answerExists (_aid)
     returns (uint256 [] memory)
     {
         return s_answers[_aid].comments;
@@ -319,7 +322,6 @@ contract Stack3 is Ownable, ERC1155 {
     function getQuestionsByUserAddress (address _user)
     public
     view
-    userExists (_user)
     returns (uint256 [] memory)
     {
         return s_users[_user].questions;
@@ -328,7 +330,6 @@ contract Stack3 is Ownable, ERC1155 {
     function getAnswersByUserAddress (address _user)
     public
     view
-    userExists (_user)
     returns (uint256 [] memory)
     {
         return s_users[_user].answers;
@@ -337,7 +338,6 @@ contract Stack3 is Ownable, ERC1155 {
     function getCommentsByUserAddress (address _user)
     public
     view
-    userExists (_user)
     returns (uint256 [] memory)
     {
         return s_users[_user].comments;
