@@ -59,7 +59,7 @@ contract Stack3 is Ownable, ERC1155 {
         uint256 [] tags;
         uint256 [] comments;
         uint256 [] answers;
-        string uri;
+        // string uri;
     }
 
     struct Answer {
@@ -70,7 +70,7 @@ contract Stack3 is Ownable, ERC1155 {
         uint256 downvotes;
         address author;
         uint256 [] comments;
-        string uri;
+        // string uri;
     }
 
     struct Comment {
@@ -78,7 +78,7 @@ contract Stack3 is Ownable, ERC1155 {
         PostType parentPostType;
         uint256 parentPostId;
         address author;
-        string uri;
+        // string uri;
     }
 
 
@@ -101,15 +101,10 @@ contract Stack3 is Ownable, ERC1155 {
     mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
 
 
-    function _initCounters (uint256 _initValue) private {
-        s_questionIdCounter = _initValue;
-        s_answerIdCounter = _initValue;
-        s_commentIdCounter = _initValue;
-    }
+    
 
-    constructor (address _tokenAddress, string memory _baseUri, uint256 _reservedTokensCount) ERC1155 (_baseUri) {
+    constructor (address _tokenAddress, string memory _baseUri) ERC1155 (_baseUri) {
         token = ERC1155(_tokenAddress);
-        s_userIdCounter = _reservedTokensCount;
         _initCounters(1);
     }
 
@@ -264,6 +259,13 @@ contract Stack3 is Ownable, ERC1155 {
         return _id > 0 && _id < s_commentIdCounter;
     }
 
+    function _initCounters (uint256 _initValue) internal {
+        s_userIdCounter = _initValue;
+        s_questionIdCounter = _initValue;
+        s_answerIdCounter = _initValue;
+        s_commentIdCounter = _initValue;
+    }
+
 
 
     function getUserByAddress (address _userAddress) 
@@ -348,6 +350,20 @@ contract Stack3 is Ownable, ERC1155 {
     returns (uint256 [] memory)
     {
         return s_users[_user].comments;
+    }
+
+    function getTotalCounts () 
+    public 
+    view 
+    returns 
+    (uint256, uint256, uint256, uint256) 
+    {
+        return (
+            s_userIdCounter - 1,
+            s_questionIdCounter - 1,
+            s_answerIdCounter - 1,
+            s_commentIdCounter - 1
+        );
     }
     
 }
