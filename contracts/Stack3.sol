@@ -88,6 +88,8 @@ contract Stack3 is Ownable, ERC1155 {
     uint256 private s_commentIdCounter;
     // uint256 private i_reservedTokensCount;
 
+    address [] private s_topUsers; 
+
     ERC1155 token;
 
     mapping (address => User) private s_users;
@@ -235,6 +237,11 @@ contract Stack3 is Ownable, ERC1155 {
     }
 
 
+    function setTopUsers (address [] memory _topUsers) external {
+        s_topUsers = _topUsers;
+    }
+
+
     function _callerIsWallet (address _addr) internal view returns (bool) {
         return tx.origin == _addr;
     }
@@ -364,6 +371,15 @@ contract Stack3 is Ownable, ERC1155 {
             s_answerIdCounter - 1,
             s_commentIdCounter - 1
         );
+    }
+
+    function getTopUsers () 
+    public 
+    view 
+    returns 
+    (address [] memory) 
+    {
+        return s_topUsers;
     }
     
 }

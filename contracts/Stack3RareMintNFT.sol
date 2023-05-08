@@ -14,20 +14,22 @@ contract Stack3RareMintNFT is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private s_tokenIds;
 
-    uint256 immutable public s_maxSupply;
-    string public s_baseUri;
+    uint256 immutable public maxSupply;
+    address immutable public collectionMintAddress;
+    string public baseUri;
 
-    constructor (uint256 _maxSupply, string memory _baseUri) ERC721 ("Stack3RareMintNFT", "STK3") {
-        s_maxSupply = _maxSupply;
-        s_baseUri = _baseUri;
+    constructor (uint256 _maxSupply, address _collectionMintAddress, string memory _baseUri) ERC721 ("Stack3RareMintNFT", "STK3") {
+        maxSupply = _maxSupply;
+        baseUri = _baseUri;
+        collectionMintAddress = _collectionMintAddress;
     }
 
-    function devMint (address _to) external onlyOwner {
+    function devMint () external onlyOwner {
         uint256 newId = s_tokenIds.current();
-        require (newId <= s_maxSupply, "STK3: Max supply minted.");
+        require (newId <= maxSupply, "STK3: Max supply minted.");
         s_tokenIds.increment();
-        _safeMint (_to, newId);
-        _setTokenURI (newId, string(abi.encodePacked(s_baseUri, newId.toString(), ".json")));
+        _safeMint (collectionMintAddress, newId);
+        _setTokenURI (newId, string(abi.encodePacked(baseUri, newId.toString(), ".json")));
     }
 
 
