@@ -21,7 +21,7 @@ const deployStack3RareNFT = async (
   await stack3RareMintNft.deployed();
 
   console.log(
-    `Stack3 contract has been deployed at address: ${stack3RareMintNft.address}`
+    `Stack3RareMintNFT contract has been deployed at address: ${stack3RareMintNft.address}`
   );
 
   return stack3RareMintNft;
@@ -37,7 +37,7 @@ const deployStack3Badges = async (deployerAddress, baseUri) => {
   await stack3Badges.deployed();
 
   console.log(
-    `Stack3 contract has been deployed at address: ${stack3Badges.address}`
+    `Stack3Badges contract has been deployed at address: ${stack3Badges.address}`
   );
 
   return stack3Badges;
