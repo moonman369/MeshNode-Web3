@@ -4,9 +4,10 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Stack3Badges.sol";
 
 
-contract Stack3 is Ownable, ERC1155 {
+contract Stack3 is Ownable {
 
     enum PostType {
         QUESTION,
@@ -43,6 +44,7 @@ contract Stack3 is Ownable, ERC1155 {
 
     struct User {
         uint256 tokenId;
+        uint256 bestAnswerCount;
         address userAddress;
         uint256 [] questions;
         uint256 [] answers;
@@ -90,7 +92,7 @@ contract Stack3 is Ownable, ERC1155 {
 
     address [] private s_topUsers; 
 
-    ERC1155 token;
+    Stack3Badges private immutable i_stack3Badges;
 
     mapping (address => User) private s_users;
     mapping (uint256 => Question) private s_questions;
@@ -105,8 +107,8 @@ contract Stack3 is Ownable, ERC1155 {
 
     
 
-    constructor (address _tokenAddress, string memory _baseUri) ERC1155 (_baseUri) {
-        token = ERC1155(_tokenAddress);
+    constructor (address _stack3BadgesAddress) {
+        i_stack3Badges = Stack3Badges(_stack3BadgesAddress);
         _initCounters(1);
     }
 
@@ -119,9 +121,10 @@ contract Stack3 is Ownable, ERC1155 {
         s_users[msg.sender].tokenId = newId;
         s_users[msg.sender].userAddress = msg.sender;
 
-        _mint(msg.sender, newId, 1, "0x0");
+        i_stack3Badges.mintUserBadge(msg.sender);
 
         emit NewUser (block.timestamp, newId, msg.sender);
+    
     }
 
 
@@ -140,6 +143,8 @@ contract Stack3 is Ownable, ERC1155 {
         for (uint256 i=0; i < _tags.length; i++) {
             s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
         }
+
+        i_stack3Badges.updateAndRewardBadges(0, s_users[msg.sender].questions.length, 0, msg.sender);
 
         emit NewQuestion(block.timestamp, newId, msg.sender);
     }
@@ -178,6 +183,7 @@ contract Stack3 is Ownable, ERC1155 {
             s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
         }
 
+        i_stack3Badges.updateAndRewardBadges(1, s_users[msg.sender].answers.length, 0, msg.sender);
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
     }
 
@@ -208,6 +214,7 @@ contract Stack3 is Ownable, ERC1155 {
 
         s_questions[qid].bestAnswerChosen = true;
         s_answers[_aid].isBestAnswer = true;
+        s_users[s_answers[_aid].author].bestAnswerCount += 1;
     }
 
 
@@ -236,10 +243,6 @@ contract Stack3 is Ownable, ERC1155 {
         emit NewComment (block.timestamp, newId, PostType(_postType), _postId, msg.sender);
     }
 
-
-    function setTopUsers (address [] memory _topUsers) external {
-        s_topUsers = _topUsers;
-    }
 
 
     function _callerIsWallet (address _addr) internal view returns (bool) {
@@ -359,27 +362,20 @@ contract Stack3 is Ownable, ERC1155 {
         return s_users[_user].comments;
     }
 
-    function getTotalCounts () 
-    public 
-    view 
-    returns 
-    (uint256, uint256, uint256, uint256) 
-    {
-        return (
-            s_userIdCounter - 1,
-            s_questionIdCounter - 1,
-            s_answerIdCounter - 1,
-            s_commentIdCounter - 1
-        );
-    }
+    // function getTotalCounts () 
+    // public 
+    // view 
+    // returns 
+    // (uint256, uint256, uint256, uint256) 
+    // {
+    //     return (
+    //         s_userIdCounter - 1,
+    //         s_questionIdCounter - 1,
+    //         s_answerIdCounter - 1,
+    //         s_commentIdCounter - 1
+    //     );
+    // }
 
-    function getTopUsers () 
-    public 
-    view 
-    returns 
-    (address [] memory) 
-    {
-        return s_topUsers;
-    }
+    
     
 }
