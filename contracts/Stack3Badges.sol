@@ -24,6 +24,14 @@ contract Stack3Badges is ERC1155, Ownable {
     uint256 public constant BEST_ANSWER_250 = 13;
     uint256 public constant COMMENTS_100 = 14;
     uint256 public constant COMMENTS_500 = 15;
+    uint256 public constant UPVOTE_ANSWER_10 = 16;
+    uint256 public constant UPVOTE_ANSWER_50 = 17;
+    uint256 public constant UPVOTE_ANSWER_100 = 18;
+    uint256 public constant UPVOTE_ANSWER_200 = 19;
+    uint256 public constant UPVOTE_ANSWER_500 = 20;
+    uint256 public constant UPVOTE_QUESTION_10 = 21;
+    uint256 public constant UPVOTE_QUESTION_50 = 22;
+    uint256 public constant UPVOTE_QUESTION_250 = 23;
 
     string private s_baseUri;
     // Stack3 private immutable i_stack3;
@@ -38,10 +46,10 @@ contract Stack3Badges is ERC1155, Ownable {
     }
         
 
-    function updateAndRewardBadges (uint8 _postType, uint256 _numPost, uint256 _numBest, address _user) external {
-        if (_postType == 0) {
+    function updateAndRewardBadges (uint8 _reqType, uint256 _numPost, address _user) external {
+        if (_reqType == 0) {
             // uint256 numQ = i_stack3.getUserByAddress(_user).questions.length;
-            if (_numPost == 10) {
+            if (_numPost == 10) { // Q posts
                 _mint(_user, QUESTION_10, 1, "");
             }
             else if (_numPost == 25) {
@@ -55,7 +63,19 @@ contract Stack3Badges is ERC1155, Ownable {
             }
         }
 
-        else if (_postType == 1) {
+        else if (_reqType == 1) { // Q vote
+            if (_numPost == 10) {
+                _mint(_user, UPVOTE_QUESTION_10, 1, "");
+            }
+            else if (_numPost == 50) {
+                _mint(_user, UPVOTE_QUESTION_50, 1, "");
+            }
+            else if (_numPost == 250) {
+                _mint(_user, UPVOTE_QUESTION_250, 1, "");
+            }
+        }
+
+        else if (_reqType == 2) { // A post
             // uint256 numA = i_stack3.getUserByAddress(_user).answers.length;
             // uint256 bestAnswerCount = i_stack3.getUserByAddress(_user).bestAnswerCount;
             if (_numPost == 10) {
@@ -75,21 +95,40 @@ contract Stack3Badges is ERC1155, Ownable {
             }
             else if (_numPost == 500) {
                 _mint(_user, ANSWER_500, 1, "");
-            }
-
-            if (_numBest == 10) {
-                _mint(_user, BEST_ANSWER_10, 1, "");
-            }
-            else if (_numBest == 50) {
-                _mint(_user, BEST_ANSWER_50, 1, "");
-            }
-            else if (_numBest == 250) {
-                _mint(_user, BEST_ANSWER_250, 1, "");
-            }
-            
+            }    
         }
 
-        else {
+        else if (_reqType == 3) { // A vote
+            if (_numPost == 10) {
+                _mint(_user, UPVOTE_ANSWER_10, 1, "");
+            }
+            else if (_numPost == 50) {
+                _mint(_user, UPVOTE_ANSWER_50, 1, "");
+            }
+            else if (_numPost == 100) {
+                _mint(_user, UPVOTE_ANSWER_100, 1, "");
+            }
+            else if (_numPost == 200) {
+                _mint(_user, UPVOTE_ANSWER_200, 1, "");
+            }
+            else if (_numPost == 500) {
+                _mint(_user, UPVOTE_ANSWER_500, 1, "");
+            }
+        }
+
+        else if (_reqType == 4) { // Best Ans
+            if (_numPost == 10) {
+                _mint(_user, BEST_ANSWER_10, 1, "");
+            }
+            else if (_numPost == 50) {
+                _mint(_user, BEST_ANSWER_50, 1, "");
+            }
+            else if (_numPost == 250) {
+                _mint(_user, BEST_ANSWER_250, 1, "");
+            }
+        }
+
+        else { // Comments
             // uint256 numC = i_stack3.getUserByAddress(_user).comments.length;
             if (_numPost == 100) {
                 _mint(_user, COMMENTS_100, 1, "");

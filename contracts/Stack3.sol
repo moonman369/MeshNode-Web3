@@ -45,6 +45,8 @@ contract Stack3 is Ownable {
     struct User {
         uint256 tokenId;
         uint256 bestAnswerCount;
+        uint256 qUpvotes;
+        uint256 aUpvotes;
         address userAddress;
         uint256 [] questions;
         uint256 [] answers;
@@ -144,7 +146,7 @@ contract Stack3 is Ownable {
             s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
         }
 
-        i_stack3Badges.updateAndRewardBadges(0, s_users[msg.sender].questions.length, 0, msg.sender);
+        i_stack3Badges.updateAndRewardBadges(0, s_users[msg.sender].questions.length, msg.sender);
 
         emit NewQuestion(block.timestamp, newId, msg.sender);
     }
@@ -155,12 +157,18 @@ contract Stack3 is Ownable {
         require (_questionExists(_qid), "Stack3: Invalid question id");
         require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote param");
-        
-        _vote == 1
-            ? s_questions[_qid].upvotes += 1
-            : s_questions[_qid].downvotes += 1;
 
-        s_userVotedQuestion[msg.sender][_qid] = true;    
+        if (_vote == -1) {
+            s_questions[_qid].downvotes += 1;
+        }
+        else {
+            s_questions[_qid].upvotes += 1;
+            s_users[msg.sender].qUpvotes += 1;
+        }
+    
+        s_userVotedQuestion[msg.sender][_qid] = true;
+
+        i_stack3Badges.updateAndRewardBadges(1, s_users[msg.sender].qUpvotes + 1, msg.sender);
 
     }
 
@@ -183,7 +191,7 @@ contract Stack3 is Ownable {
             s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
         }
 
-        i_stack3Badges.updateAndRewardBadges(1, s_users[msg.sender].answers.length, 0, msg.sender);
+        i_stack3Badges.updateAndRewardBadges(2, s_users[msg.sender].answers.length, msg.sender);
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
     }
 
@@ -194,11 +202,17 @@ contract Stack3 is Ownable {
         require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has already casted their vote.");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
         
-        _vote == 1
-            ? s_questions[_aid].upvotes += 1
-            : s_questions[_aid].downvotes += 1;
+        if (_vote == -1) {
+            s_answers[_aid].downvotes += 1;
+        }
+        else {
+            s_answers[_aid].upvotes += 1;
+            s_users[msg.sender].aUpvotes += 1;
+        }
 
-        s_userVotedAnswer[msg.sender][_aid] = true;    
+        s_userVotedAnswer[msg.sender][_aid] = true;
+
+        i_stack3Badges.updateAndRewardBadges(3, s_users[msg.sender].aUpvotes + 1, msg.sender);
 
     }
 
@@ -215,6 +229,8 @@ contract Stack3 is Ownable {
         s_questions[qid].bestAnswerChosen = true;
         s_answers[_aid].isBestAnswer = true;
         s_users[s_answers[_aid].author].bestAnswerCount += 1;
+
+        i_stack3Badges.updateAndRewardBadges(2, s_users[s_answers[_aid].author].bestAnswerCount +1, s_answers[_aid].author);
     }
 
 
@@ -241,6 +257,8 @@ contract Stack3 is Ownable {
         s_comments[newId].author = msg.sender;
 
         emit NewComment (block.timestamp, newId, PostType(_postType), _postId, msg.sender);
+        
+        i_stack3Badges.updateAndRewardBadges(5, s_users[msg.sender].comments.length, msg.sender);
     }
 
 
@@ -362,19 +380,19 @@ contract Stack3 is Ownable {
         return s_users[_user].comments;
     }
 
-    // function getTotalCounts () 
-    // public 
-    // view 
-    // returns 
-    // (uint256, uint256, uint256, uint256) 
-    // {
-    //     return (
-    //         s_userIdCounter - 1,
-    //         s_questionIdCounter - 1,
-    //         s_answerIdCounter - 1,
-    //         s_commentIdCounter - 1
-    //     );
-    // }
+    function getTotalCounts () 
+    public 
+    view 
+    returns 
+    (uint256, uint256, uint256, uint256) 
+    {
+        return (
+            s_userIdCounter - 1,
+            s_questionIdCounter - 1,
+            s_answerIdCounter - 1,
+            s_commentIdCounter - 1
+        );
+    }
 
     
     
