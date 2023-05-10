@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy-sepolia": "npx hardhat --network sepolia run scripts/deploy.js",
-    "deploy-mumbai": "npx hardhat --network mumbai run scripts/deploy.js"
+    "deploy-sepolia": "npx hardhat --network sepolia run scripts/deployPipeline.js",
+    "deploy-mumbai": "npx hardhat --network mumbai run scripts/deployPipeline.js",
+    "deploy-local": "npx hardhat --network localhost run scripts/deployPipeline.js"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +19,8 @@
     "hardhat": "^2.14.0"
   },
   "dependencies": {
-    "dotenv": "^16.0.3"
+    "dotenv": "^16.0.3",
+    "keccak256": "^1.0.6",
+    "merkletreejs": "^0.3.10"
   }
 }
