@@ -160,7 +160,7 @@ describe("II. Posting questions", () => {
   });
 });
 
-describe("Vote on question", () => {
+describe("III. Vote on question", () => {
   const tagsParam = [1, 5, 7, 8, 3, 9].map((tag) => BigNumber.from(tag));
   let QID;
   beforeEach(async () => {
@@ -194,7 +194,7 @@ describe("Vote on question", () => {
     expect(downvotes).to.eql(BigNumber.from(1));
   });
 
-  it("2. Upvotes count SHOULD be reflected in User struct", async () => {
+  it("3. Upvotes count SHOULD be reflected in User struct", async () => {
     const { author } = await stack3.getQuestionById(QID);
     const { qUpvotes: qUpInit } = await stack3.getUserByAddress(author);
 
@@ -203,5 +203,39 @@ describe("Vote on question", () => {
     const { qUpvotes: qUpFinal } = await stack3.getUserByAddress(author);
 
     expect(qUpFinal).to.eql(qUpInit.add(1));
+  });
+
+  it("4. Unregistered addresses SHOULD NOT be able to call the function", async () => {
+    await expect(
+      stack3.connect(signers[3]).voteQuestion(QID, 1, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User not registered");
+  });
+
+  it("5. Function SHOULD NOT execute for invalid `questionId` param passed", async () => {
+    await expect(
+      stack3.connect(signers[1]).voteQuestion(QID.add(200), -2, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Invalid question id");
+  });
+
+  it("6. Function SHOULD NOT execute for invalid `voteMarker` param passed", async () => {
+    await expect(
+      stack3.connect(signers[1]).voteQuestion(QID, -2, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Invalid vote param");
+  });
+
+  it("6. User SHOULD NOT be able to call function more than once per QID", async () => {
+    await up1down1(QID);
+
+    await expect(
+      stack3.connect(signers[1]).voteQuestion(QID, 1, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User has voted");
+  });
+
+  it("7. Function SHOULD NOT execute if invalid secret is passed", async () => {
+    const { hashedSecret: invalidSecret } =
+      requestMerkleSecret("NOT-VALID-PHRASE");
+    await expect(
+      stack3.connect(signers[0]).voteQuestion(QID, 1, invalidSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
   });
 });
