@@ -44,7 +44,7 @@ contract Stack3 is Ownable {
 
 
     struct User {
-        uint256 tokenId;
+        uint256 id;
         uint256 bestAnswerCount;
         uint256 qUpvotes;
         uint256 aUpvotes;
@@ -126,7 +126,7 @@ contract Stack3 is Ownable {
         require (!_userExists(msg.sender), "Stack3: User already registered");
         uint256 newId = s_userIdCounter++;
         
-        s_users[msg.sender].tokenId = newId;
+        s_users[msg.sender].id = newId;
         s_users[msg.sender].userAddress = msg.sender;
 
         i_stack3Badges.mintUserBadge(msg.sender);
@@ -307,7 +307,7 @@ contract Stack3 is Ownable {
     }
 
     function _verifySecret (bytes32 _secret) internal view returns (bool) {
-        return MerkleProof.verify(s_merkleProof, s_merkleRoot, _secret);
+        return MerkleProof.verify(s_merkleProof, s_merkleRoot, keccak256(abi.encodePacked(_secret)));
     }
 
 

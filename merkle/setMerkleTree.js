@@ -51,7 +51,7 @@ const requestMerkleSecret = (secretPhrase) => {
   const hashedSecret = keccak256(secretPhrase);
   const leaf = keccak256(hashedSecret);
 
-  const merkleTree = MerkleTree([leaf], keccak256, { sortPairs: true });
+  const merkleTree = new MerkleTree([leaf], keccak256, { sortPairs: true });
 
   return {
     hashedSecret: `0x${hashedSecret.toString("hex")}`,
