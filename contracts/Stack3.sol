@@ -27,11 +27,23 @@ contract Stack3 is Ownable {
         address indexed user
     );
 
+    event NewVote (
+        uint8 indexed _postType,
+        uint256 indexed id,
+        int8 _vote,
+        address indexed voter
+    );
+
     event NewAnswer (
         uint256 timestamp, 
         uint256 indexed id, 
         uint256 indexed qId, 
         address indexed user
+    );
+
+    event BestAnswerChosen (
+        uint256 qid,
+        uint256 aid
     );
 
     event NewComment (
