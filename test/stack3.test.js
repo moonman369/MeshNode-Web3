@@ -278,14 +278,14 @@ describe("III. Vote on question", () => {
 describe("IV. Posting answers", () => {
   let QID;
   beforeEach(async () => {
-    stack3.connect(signers[0]).registerUser(hashedSecret);
+    // stack3.connect(signers[0]).registerUser(hashedSecret);
 
-    stack3.connect(signers[1]).registerUser(hashedSecret);
-    stack3.connect(signers[2]).registerUser(hashedSecret);
+    // stack3.connect(signers[1]).registerUser(hashedSecret);
+    // stack3.connect(signers[2]).registerUser(hashedSecret);
 
-    const tagsParam = [1, 2, 3, 4, 5];
+    // const tagsParam = [1, 2, 3, 4, 5];
 
-    stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret);
+    // await stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret);
     const { questions } = await stack3.getUserByAddress(addresses[0]);
     QID = questions[questions.length - 1];
   });
@@ -361,5 +361,43 @@ describe("IV. Posting answers", () => {
     await expect(
       stack3.connect(signers[1]).voteQuestion(QID, 1, invalidSecret)
     ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
+  });
+});
+
+describe("V. Voting on answers.", () => {
+  let AID;
+  beforeEach(async () => {
+    const { answers } = await stack3.getUserByAddress(addresses[1]);
+    AID = answers[answers.length - 1];
+  });
+
+  const postAnswer = async (QID) => {
+    await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const { answers } = await stack3.getUserByAddress(addresses[1]);
+    const AID = answers[answers.length - 1];
+    return AID;
+  };
+
+  it("1. Registered addresses SHOULD be able to vote on any Answer", async () => {
+    await stack3.connect(signers[3]).registerUser(hashedSecret);
+    await expect(stack3.connect(signers[2]).voteAnswer(AID, 1, hashedSecret)).to
+      .eventually.be.fulfilled;
+    await expect(stack3.connect(signers[3]).voteAnswer(AID, 1, hashedSecret)).to
+      .eventually.be.fulfilled;
+  });
+
+  it("2. Custom `NewVote` event SHOULD be emitted on successful `voteAnswer` call", async () => {
+    const AIDFromCall = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+    const tx = await stack3
+      .connect(signers[2])
+      .voteAnswer(AIDFromCall, 1, hashedSecret);
+    const { events } = await tx.wait();
+    expect(events[0].eventSignature).to.equal(
+      "NewVote(uint8,uint256,int8,address)"
+    );
   });
 });
