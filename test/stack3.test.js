@@ -129,14 +129,14 @@ describe("II. Posting questions", () => {
     );
   });
 
-  it("2. Question authors User state must be updated accordingly", async () => {
+  it("3. Question authors User state must be updated accordingly", async () => {
     const { questions } = await stack3.getUserByAddress(addresses[0]);
     const newQID = questions[questions.length - 1];
     expect(questions.length).to.equal(2);
     expect(newQID).to.eql((await stack3.getTotalCounts())[1]);
   });
 
-  it("3. A Question struct SHOULD have reqd params set to initial values", async () => {
+  it("4. A Question struct SHOULD have reqd params set to initial values", async () => {
     const { questions } = await stack3.getUserByAddress(addresses[0]);
     const newQID = questions[questions.length - 1];
     // console.log(newQID);
@@ -162,20 +162,20 @@ describe("II. Posting questions", () => {
     expect(answers).to.eql([]);
   });
 
-  it("4. Unregistered addresses SHOULD NOT be able to call the function", async () => {
+  it("5. Unregistered addresses SHOULD NOT be able to call the function", async () => {
     await expect(
       stack3.connect(signers[1]).postQuestion(tagsParam, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
-  it("5. Users SHOULD NOT be able to pass more than 10 tags per question.", async () => {
+  it("6. Users SHOULD NOT be able to pass more than 10 tags per question.", async () => {
     const gt10Tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     await expect(
       stack3.connect(signers[0]).postQuestion(gt10Tags, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Max tag count is 10");
   });
 
-  it("6. Function SHOULD NOT execute if invalid secret is passed", async () => {
+  it("7. Function SHOULD NOT execute if invalid secret is passed", async () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(
@@ -210,7 +210,18 @@ describe("III. Vote on question", () => {
       .to.eventually.be.fulfilled;
   });
 
-  it("2. Upvotes and downvote count SHOULD be reflected in Question struct", async () => {
+  it("2. Custom `NewVote` event SHOULD be emitted on successful `voteQuestion` call", async () => {
+    const tx = await stack3
+      .connect(signers[1])
+      .voteQuestion(QID, -1, hashedSecret);
+    const { events } = await tx.wait();
+    // console.log(events[0]);
+    expect(events[0].eventSignature).to.equal(
+      "NewVote(uint8,uint256,int8,address)"
+    );
+  });
+
+  it("3. Upvotes and downvote count SHOULD be reflected in Question struct", async () => {
     await up1down1(QID);
     // console.log(await stack3.getQuestionById(QID));
     const { upvotes, downvotes } = await stack3.getQuestionById(QID);
@@ -218,7 +229,7 @@ describe("III. Vote on question", () => {
     expect(downvotes).to.eql(BigNumber.from(1));
   });
 
-  it("3. Upvotes count SHOULD be reflected in User struct", async () => {
+  it("4. Upvotes count SHOULD be reflected in User struct", async () => {
     const { author } = await stack3.getQuestionById(QID);
     const { qUpvotes: qUpInit } = await stack3.getUserByAddress(author);
 
@@ -229,25 +240,25 @@ describe("III. Vote on question", () => {
     expect(qUpFinal).to.eql(qUpInit.add(1));
   });
 
-  it("4. Unregistered addresses SHOULD NOT be able to call the function", async () => {
+  it("5. Unregistered addresses SHOULD NOT be able to call the function", async () => {
     await expect(
       stack3.connect(signers[3]).voteQuestion(QID, 1, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
-  it("5. Function SHOULD NOT execute for invalid `questionId` param passed", async () => {
+  it("6. Function SHOULD NOT execute for invalid `questionId` param passed", async () => {
     await expect(
       stack3.connect(signers[1]).voteQuestion(QID.add(200), -2, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid question id");
   });
 
-  it("6. Function SHOULD NOT execute for invalid `voteMarker (1 or -1)` param passed", async () => {
+  it("7. Function SHOULD NOT execute for invalid `voteMarker (1 or -1)` param passed", async () => {
     await expect(
       stack3.connect(signers[1]).voteQuestion(QID, -2, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid vote param");
   });
 
-  it("6. User SHOULD NOT be able to call function more than once per QID", async () => {
+  it("8. User SHOULD NOT be able to call function more than once per QID", async () => {
     await up1down1(QID);
 
     await expect(
@@ -255,7 +266,7 @@ describe("III. Vote on question", () => {
     ).to.eventually.be.rejectedWith("Stack3: User has voted");
   });
 
-  it("7. Function SHOULD NOT execute if invalid secret is passed", async () => {
+  it("9. Function SHOULD NOT execute if invalid secret is passed", async () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(
@@ -291,7 +302,15 @@ describe("IV. Posting answers", () => {
       .eventually.be.fulfilled;
   });
 
-  it("2. Answer struct must have reqd params set to init values", async () => {
+  it("2. Custom `NewAnswer` event should be emitted on successful `postAnswer` call", async () => {
+    const tx = await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const { events } = await tx.wait();
+    expect(events[0].eventSignature).to.equal(
+      "NewAnswer(uint256,uint256,uint256,address)"
+    );
+  });
+
+  it("3. Answer struct must have reqd params set to init values", async () => {
     const AID = await postAnswer(QID);
 
     const { isBestAnswer, id, qid, upvotes, downvotes, author, comments } =
@@ -308,14 +327,14 @@ describe("IV. Posting answers", () => {
     expect(comments).to.eql([]);
   });
 
-  it("3. New Answer SHOULD be reflected in Question struct state", async () => {
+  it("4. New Answer SHOULD be reflected in Question struct state", async () => {
     const AID = await postAnswer(QID);
     const { answers } = await stack3.getQuestionById(QID);
     const AIDFromQ = answers[answers.length - 1];
     expect(AIDFromQ).to.eql(AID);
   });
 
-  it("4. New Answer SHOULD be reflected in User struct state", async () => {
+  it("5. New Answer SHOULD be reflected in User struct state", async () => {
     await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
     const newAID = (await stack3.getTotalCounts())[2];
     const { answers } = await stack3.getUserByAddress(addresses[1]);
@@ -324,19 +343,19 @@ describe("IV. Posting answers", () => {
     expect(AIDFromU).to.eql(newAID);
   });
 
-  it("5. Unregistered addresses SHOULD not be able to call the function", async () => {
+  it("6. Unregistered addresses SHOULD not be able to call the function", async () => {
     await expect(
       stack3.connect(signers[3]).postAnswer(QID, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
-  it("6. Function SHOULD NOT execute if invalid `QuestionId` param is passed", async () => {
+  it("7. Function SHOULD NOT execute if invalid `QuestionId` param is passed", async () => {
     await expect(
       stack3.connect(signers[1]).postAnswer(QID.add(100), hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid question id");
   });
 
-  it("7. Function SHOULD NOT execute if invalid `secret` param is passed", async () => {
+  it("8. Function SHOULD NOT execute if invalid `secret` param is passed", async () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(

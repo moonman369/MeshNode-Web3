@@ -190,6 +190,8 @@ contract Stack3 is Ownable {
 
         i_stack3Badges.updateAndRewardBadges(1, s_users[msg.sender].qUpvotes + 1, msg.sender);
 
+        emit NewVote(uint8(PostType.QUESTION), _qid, _vote, msg.sender);
+
     }
 
 
