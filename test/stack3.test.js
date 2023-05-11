@@ -217,7 +217,7 @@ describe("III. Vote on question", () => {
     ).to.eventually.be.rejectedWith("Stack3: Invalid question id");
   });
 
-  it("6. Function SHOULD NOT execute for invalid `voteMarker` param passed", async () => {
+  it("6. Function SHOULD NOT execute for invalid `voteMarker (1 or -1)` param passed", async () => {
     await expect(
       stack3.connect(signers[1]).voteQuestion(QID, -2, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid vote param");
@@ -237,5 +237,72 @@ describe("III. Vote on question", () => {
     await expect(
       stack3.connect(signers[0]).voteQuestion(QID, 1, invalidSecret)
     ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
+  });
+});
+
+describe("IV. Posting answers", () => {
+  let QID;
+  beforeEach(async () => {
+    stack3.connect(signers[0]).registerUser(hashedSecret);
+
+    stack3.connect(signers[1]).registerUser(hashedSecret);
+    stack3.connect(signers[2]).registerUser(hashedSecret);
+
+    const tagsParam = [1, 2, 3, 4, 5];
+
+    stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret);
+    const { questions } = await stack3.getUserByAddress(addresses[0]);
+    QID = questions[questions.length - 1];
+  });
+
+  const postAnswer = async (QID) => {
+    await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const { answers } = await stack3.getUserByAddress(addresses[1]);
+    const AID = answers[answers.length - 1];
+    return AID;
+  };
+
+  it("1. Registered User SHOULD be able to postAnswers to any Question", async () => {
+    await expect(stack3.connect(signers[1]).postAnswer(QID, hashedSecret)).to
+      .eventually.be.fulfilled;
+  });
+
+  it("2. Answer struct must have reqd params set to init values", async () => {
+    const AID = await postAnswer(QID);
+
+    const { isBestAnswer, id, qid, upvotes, downvotes, author, comments } =
+      await stack3.getAnswerById(AID);
+
+    // console.log(isBestAnswer, id, qid, upvotes, downvotes, author, comments);
+
+    expect(isBestAnswer).to.equal(false);
+    expect(id).to.eql(AID);
+    expect(qid).to.eql(QID);
+    expect(upvotes).to.eql(BigNumber.from(0));
+    expect(downvotes).to.eql(BigNumber.from(0));
+    expect(author).to.equal(addresses[1]);
+    expect(comments).to.eql([]);
+  });
+
+  it("3. New Answer SHOULD be reflected in Question struct state", async () => {
+    const AID = await postAnswer(QID);
+    const { answers } = await stack3.getQuestionById(QID);
+    const AIDFromQ = answers[answers.length - 1];
+    expect(AIDFromQ).to.eql(AID);
+  });
+
+  it("4. New Answer SHOULD be reflected in User struct state", async () => {
+    await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const newAID = (await stack3.getTotalCounts())[2];
+    const { answers } = await stack3.getUserByAddress(addresses[1]);
+    const AIDFromU = answers[answers.length - 1];
+
+    expect(AIDFromU).to.eql(newAID);
+  });
+
+  it("5. Unregistered addresses SHOULD not be able to call the function", async () => {
+    await expect(
+      stack3.connect(signers[3]).postAnswer(QID, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 });
