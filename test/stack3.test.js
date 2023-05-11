@@ -19,6 +19,7 @@ const BADGES_URI = "uri/badges/";
 
 const INIT_TAG_COUNT = 30;
 const { hashedSecret, merkleRoot } = requestMerkleSecret(SECRET_PHRASE);
+const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/");
 
 before(async () => {
   [deployer, ...signers] = await ethers.getSigners();
@@ -48,7 +49,7 @@ describe("I. Registering User", () => {
       .eventually.be.fulfilled;
   });
 
-  it("2. Registered User struct SHOULD have reqd parameters set to initial value", async () => {
+  it("2. Registered User struct SHOULD have reqd params set to initial values", async () => {
     const {
       id,
       bestAnswerCount,
@@ -83,7 +84,7 @@ describe("I. Registering User", () => {
     ).to.eventually.be.rejectedWith("Stack3: User already registered");
   });
 
-  it("5. Function SHOULD not execute if invalid secret is passed", async () => {
+  it("5. Function SHOULD NOT execute if invalid secret is passed", async () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(
@@ -92,8 +93,115 @@ describe("I. Registering User", () => {
   });
 });
 
-describe("II. Posting questions.", () => {
-  beforeEach(() => {
+describe("II. Posting questions", () => {
+  const tagsParam = [1, 5, 7, 8, 3, 9].map((tag) => BigNumber.from(tag));
+  beforeEach(async () => {
     stack3.connect(signers[0]).registerUser(hashedSecret);
+  });
+
+  it("1. Registered users SHOULD be able to post Questions.", async () => {
+    await expect(
+      stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret)
+    ).to.eventually.be.fulfilled;
+  });
+
+  it("2. Question authors User state must be updated accordingly", async () => {
+    const { questions } = await stack3.getUserByAddress(addresses[0]);
+    const newQID = questions[questions.length - 1];
+    expect(questions.length).to.equal(1);
+    expect(newQID).to.eql((await stack3.getTotalCounts())[0]);
+  });
+
+  it("3. A Question struct SHOULD have reqd params set to initial values", async () => {
+    const { questions } = await stack3.getUserByAddress(addresses[0]);
+    const newQID = questions[questions.length - 1];
+    // console.log(newQID);
+
+    const {
+      bestAnswerChosen,
+      id,
+      upvotes,
+      downvotes,
+      author,
+      tags,
+      comments,
+      answers,
+    } = await stack3.getQuestionById(newQID);
+
+    expect(bestAnswerChosen).to.equal(false);
+    expect(id).to.eql(newQID);
+    expect(upvotes).to.eql(BigNumber.from(0));
+    expect(downvotes).to.eql(BigNumber.from(0));
+    expect(author).to.equal(addresses[0]);
+    expect(tags).to.eql(tagsParam);
+    expect(comments).to.eql([]);
+    expect(answers).to.eql([]);
+  });
+
+  it("4. Unregistered addresses SHOULD NOT be able to call the function", async () => {
+    await expect(
+      stack3.connect(signers[1]).postQuestion(tagsParam, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User not registered");
+  });
+
+  it("5. Users SHOULD NOT be able to pass more than 10 tags per question.", async () => {
+    const gt10Tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    await expect(
+      stack3.connect(signers[0]).postQuestion(gt10Tags, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Max tag count is 10");
+  });
+
+  it("6. Function SHOULD NOT execute if invalid secret is passed", async () => {
+    const { hashedSecret: invalidSecret } =
+      requestMerkleSecret("NOT-VALID-PHRASE");
+    await expect(
+      stack3.connect(signers[0]).postQuestion(tagsParam, invalidSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
+  });
+});
+
+describe("Vote on question", () => {
+  const tagsParam = [1, 5, 7, 8, 3, 9].map((tag) => BigNumber.from(tag));
+  let QID;
+  beforeEach(async () => {
+    stack3.connect(signers[0]).registerUser(hashedSecret);
+
+    stack3.connect(signers[1]).registerUser(hashedSecret);
+    stack3.connect(signers[2]).registerUser(hashedSecret);
+
+    stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret);
+    const { questions } = await stack3.getUserByAddress(addresses[0]);
+    QID = questions[questions.length - 1];
+  });
+
+  const up1down1 = async (qId) => {
+    await stack3.connect(signers[1]).voteQuestion(qId, 1, hashedSecret);
+    await stack3.connect(signers[2]).voteQuestion(qId, -1, hashedSecret);
+  };
+
+  it("1. A User SHOULD be able upvote or downvote a question", async () => {
+    await expect(stack3.connect(signers[1]).voteQuestion(QID, 1, hashedSecret))
+      .to.eventually.be.fulfilled;
+    await expect(stack3.connect(signers[2]).voteQuestion(QID, -1, hashedSecret))
+      .to.eventually.be.fulfilled;
+  });
+
+  it("2. Upvotes and downvote count SHOULD be reflected in Question struct", async () => {
+    await up1down1(QID);
+    // console.log(await stack3.getQuestionById(QID));
+    const { upvotes, downvotes } = await stack3.getQuestionById(QID);
+    expect(upvotes).to.eql(BigNumber.from(1));
+    expect(downvotes).to.eql(BigNumber.from(1));
+  });
+
+  it("2. Upvotes count SHOULD be reflected in User struct", async () => {
+    const { author } = await stack3.getQuestionById(QID);
+    const { qUpvotes: qUpInit } = await stack3.getUserByAddress(author);
+
+    await up1down1(QID);
+
+    const { qUpvotes: qUpFinal } = await stack3.getUserByAddress(author);
+
+    expect(qUpFinal).to.eql(qUpInit.add(1));
   });
 });

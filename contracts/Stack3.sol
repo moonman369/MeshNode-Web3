@@ -171,7 +171,7 @@ contract Stack3 is Ownable {
         }
         else {
             s_questions[_qid].upvotes += 1;
-            s_users[msg.sender].qUpvotes += 1;
+            s_users[s_questions[_qid].author].qUpvotes += 1;
         }
     
         s_userVotedQuestion[msg.sender][_qid] = true;
