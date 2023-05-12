@@ -229,7 +229,7 @@ describe("III. Vote on question", () => {
     expect(downvotes).to.eql(BigNumber.from(1));
   });
 
-  it("4. Upvotes count SHOULD be reflected in User struct", async () => {
+  it("4. Upvotes count SHOULD be reflected in `author` User struct", async () => {
     const { author } = await stack3.getQuestionById(QID);
     const { qUpvotes: qUpInit } = await stack3.getUserByAddress(author);
 
@@ -378,6 +378,11 @@ describe("V. Voting on answers.", () => {
     return AID;
   };
 
+  const up1down1 = async (aId) => {
+    await stack3.connect(signers[1]).voteAnswer(aId, 1, hashedSecret);
+    await stack3.connect(signers[2]).voteAnswer(aId, -1, hashedSecret);
+  };
+
   it("1. Registered addresses SHOULD be able to vote on any Answer", async () => {
     await stack3.connect(signers[3]).registerUser(hashedSecret);
     await expect(stack3.connect(signers[2]).voteAnswer(AID, 1, hashedSecret)).to
@@ -399,5 +404,183 @@ describe("V. Voting on answers.", () => {
     expect(events[0].eventSignature).to.equal(
       "NewVote(uint8,uint256,int8,address)"
     );
+  });
+
+  it("3. Upvotes and downvote count SHOULD be reflected in Answer struct.", async () => {
+    const AIDFromCall = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+
+    const { upvotes: upvoteInit, downvotes: downvoteInit } =
+      await stack3.getAnswerById(AIDFromCall);
+
+    await up1down1(AIDFromCall);
+
+    const { upvotes: upvoteFinal, downvotes: downvoteFinal } =
+      await stack3.getAnswerById(AIDFromCall);
+
+    expect(upvoteFinal).to.eql(upvoteInit.add(1));
+    expect(downvoteFinal).to.eql(downvoteInit.add(1));
+  });
+
+  it("4. Upvotes count SHOULD be reflected in `author` User struct", async () => {
+    const AIDFromCall = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+
+    const { author } = await stack3.getAnswerById(AIDFromCall);
+    const { aUpvotes: aUpInit } = await stack3.getUserByAddress(author);
+
+    await up1down1(AIDFromCall);
+    const { aUpvotes: aUpFinal } = await stack3.getUserByAddress(author);
+
+    expect(aUpFinal).to.eql(aUpInit.add(1));
+  });
+
+  it("5. Unregistered addresses SHOULD NOT be able to call the function", async () => {
+    const AID = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+    await expect(
+      stack3.connect(signers[6]).voteAnswer(AID, 1, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User not registered");
+  });
+
+  it("6. Function SHOULD NOT execute for invalid `answerId` param passed", async () => {
+    const AID = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+
+    await expect(
+      stack3.connect(signers[1]).voteAnswer(AID.add(200), -1, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Invalid answer id");
+  });
+
+  it("7. Function SHOULD NOT execute for invalid `voteMarker (1 or -1)` param passed", async () => {
+    const AID = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+
+    await expect(
+      stack3.connect(signers[1]).voteAnswer(AID, -2, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Invalid vote param");
+  });
+
+  it("8. User SHOULD NOT be able to call function more than once per AID", async () => {
+    const AID = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+    await up1down1(AID);
+
+    await expect(
+      stack3.connect(signers[1]).voteAnswer(AID, 1, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User has voted");
+  });
+
+  it("9. Function SHOULD NOT execute if invalid secret is passed", async () => {
+    const AID = await postAnswer(
+      (
+        await stack3.getUserByAddress(addresses[0])
+      ).questions[0]
+    );
+
+    const { hashedSecret: invalidSecret } =
+      requestMerkleSecret("NOT-VALID-PHRASE");
+    await expect(
+      stack3.connect(signers[0]).voteAnswer(AID, 1, invalidSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
+  });
+});
+
+describe("VI. Choosing best answer", () => {
+  let QID, AID;
+  beforeEach(async () => {
+    const tags = [1, 2, 3, 4, 5];
+    const tx1 = await stack3
+      .connect(signers[0])
+      .postQuestion(tags, hashedSecret);
+    const { events: qEvents } = await tx1.wait();
+    // console.log(events);
+    QID = qEvents[0].args.id;
+
+    const tx2 = await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const { events: aEvents } = await tx2.wait();
+    // console.log(events);
+    AID = aEvents[0].args.id;
+  });
+  const chooseBest = async (AID) => {
+    await stack3.connect(signers[0]).chooseBestAnswer(AID, hashedSecret);
+  };
+
+  it("1. Question authors SHOULD be able to choose the Best Answer to their question", async () => {
+    await expect(stack3.connect(signers[0]).chooseBestAnswer(AID, hashedSecret))
+      .to.eventually.be.fulfilled;
+  });
+
+  it("2. Best answer choice SHOULD reflect in the Question struct", async () => {
+    await chooseBest(AID);
+    const { bestAnswerChosen } = await stack3.getQuestionById(QID);
+    expect(bestAnswerChosen).to.equal(true);
+  });
+
+  it("3. Best answer choice SHOULD reflect in the Answer struct", async () => {
+    await chooseBest(AID);
+    const { isBestAnswer } = await stack3.getAnswerById(AID);
+    expect(isBestAnswer).to.equal(true);
+  });
+
+  it("4. Best answer choice SHOULD reflect in the Answer struct", async () => {
+    const { bestAnswerCount: initBestCount } = await stack3.getUserByAddress(
+      addresses[1]
+    );
+
+    await chooseBest(AID);
+
+    const { bestAnswerCount: finalBestCount } = await stack3.getUserByAddress(
+      addresses[1]
+    );
+
+    expect(finalBestCount).to.eql(initBestCount.add(1));
+  });
+
+  it("5. Question authors SHOULD NOT be able choose gt 1 best answer per Question", async () => {
+    await chooseBest(AID);
+    await expect(
+      stack3.connect(signers[0]).chooseBestAnswer(AID, hashedSecret)
+    ).to.eventually.be.rejectedWith(
+      "Stack3: Best answer for question already chosen"
+    );
+  });
+
+  it("6. Non-author Users SHOULD NOT be able to choose best answer for a question.", async () => {
+    await expect(
+      stack3.connect(signers[3]).chooseBestAnswer(AID, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Caller is not author");
+  });
+
+  it("7. Unregistered Users SHOULD NOT be able to call the function", async () => {
+    await expect(
+      stack3.connect(signers[7]).chooseBestAnswer(AID, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User not registered");
+  });
+
+  it("7. Function SHOULD NOT execute if invalid secret is passed", async () => {
+    const { hashedSecret: invalidSecret } =
+      requestMerkleSecret("NOT-VALID-PHRASE");
+    await expect(
+      stack3.connect(signers[0]).chooseBestAnswer(AID, invalidSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
   });
 });

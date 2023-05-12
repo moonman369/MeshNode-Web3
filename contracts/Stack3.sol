@@ -178,17 +178,21 @@ contract Stack3 is Ownable {
         require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote param");
 
+        address author = s_questions[_qid].author;
+
         if (_vote == -1) {
             s_questions[_qid].downvotes += 1;
         }
         else {
             s_questions[_qid].upvotes += 1;
-            s_users[s_questions[_qid].author].qUpvotes += 1;
+            s_users[author].qUpvotes += 1;
         }
+
+        
     
         s_userVotedQuestion[msg.sender][_qid] = true;
 
-        i_stack3Badges.updateAndRewardBadges(1, s_users[msg.sender].qUpvotes + 1, msg.sender);
+        i_stack3Badges.updateAndRewardBadges(1, s_users[author].qUpvotes + 1, author);
 
         emit NewVote(uint8(PostType.QUESTION), _qid, _vote, msg.sender);
 
@@ -223,26 +227,28 @@ contract Stack3 is Ownable {
         require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_answerExists(_aid), "Stack3: Invalid answer id");
-        require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has already casted their vote.");
+        require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
+
+        address author = s_answers[_aid].author;
         
         if (_vote == -1) {
             s_answers[_aid].downvotes += 1;
         }
         else {
             s_answers[_aid].upvotes += 1;
-            s_users[msg.sender].aUpvotes += 1;
+            s_users[author].aUpvotes += 1;
         }
 
         s_userVotedAnswer[msg.sender][_aid] = true;
 
-        i_stack3Badges.updateAndRewardBadges(3, s_users[msg.sender].aUpvotes + 1, msg.sender);
+        i_stack3Badges.updateAndRewardBadges(3, s_users[author].aUpvotes + 1, author);
 
         emit NewVote(uint8(PostType.ANSWER), _aid, _vote, msg.sender);
     }
 
 
-    function chooseAsBestAnswer (uint256 _aid, bytes32 _secret) external {
+    function chooseBestAnswer (uint256 _aid, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
         require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
@@ -256,7 +262,7 @@ contract Stack3 is Ownable {
         s_answers[_aid].isBestAnswer = true;
         s_users[s_answers[_aid].author].bestAnswerCount += 1;
 
-        i_stack3Badges.updateAndRewardBadges(2, s_users[s_answers[_aid].author].bestAnswerCount +1, s_answers[_aid].author);
+        i_stack3Badges.updateAndRewardBadges(4, s_users[s_answers[_aid].author].bestAnswerCount +1, s_answers[_aid].author);
     }
 
 
