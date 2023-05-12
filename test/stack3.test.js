@@ -576,11 +576,157 @@ describe("VI. Choosing best answer", () => {
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
-  it("7. Function SHOULD NOT execute if invalid secret is passed", async () => {
+  it("8. Function SHOULD NOT execute if invalid secret is passed", async () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(
       stack3.connect(signers[0]).chooseBestAnswer(AID, invalidSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
+  });
+});
+
+describe("VII. Comment on post", () => {
+  let QID, AID;
+  const PostType = {
+    QUESTION: 0,
+    ANSWER: 1,
+  };
+
+  beforeEach(async () => {
+    const tags = [1, 2, 3, 4, 5];
+    const tx1 = await stack3
+      .connect(signers[0])
+      .postQuestion(tags, hashedSecret);
+    const { events: qEvents } = await tx1.wait();
+    // console.log(events);
+    QID = qEvents[qEvents.length - 1].args.id;
+
+    const tx2 = await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const { events: aEvents } = await tx2.wait();
+    // console.log(events);
+    AID = aEvents[aEvents.length - 1].args.id;
+  });
+
+  const postCommentQ1A1 = async (QID, AID) => {
+    const tx1 = await stack3
+      .connect(signers[2])
+      .postComment(PostType.QUESTION, QID, hashedSecret);
+    const { events: qEvents } = await tx1.wait();
+
+    const tx2 = await stack3
+      .connect(signers[2])
+      .postComment(PostType.ANSWER, AID, hashedSecret);
+
+    const { events: aEvents } = await tx2.wait();
+
+    return {
+      qCID: qEvents[0].args.id,
+      aCID: aEvents[0].args.id,
+    };
+  };
+
+  it("1. Registered Users SHOULD be able to comment on Questions and Answers", async () => {
+    await expect(
+      stack3
+        .connect(signers[2])
+        .postComment(PostType.QUESTION, QID, hashedSecret)
+    ).to.eventually.be.fulfilled;
+    await expect(
+      stack3.connect(signers[2]).postComment(PostType.ANSWER, AID, hashedSecret)
+    ).to.eventually.be.fulfilled;
+  });
+
+  it("2. Comment struct SHOULD have required params set to init values", async () => {
+    const { qCID, aCID } = await postCommentQ1A1(QID, AID);
+
+    const {
+      id: id_q,
+      parentPostType: parentPostType_q,
+      parentPostId: parentPostId_q,
+      author: author_q,
+    } = await stack3.getCommentById(qCID);
+    expect(id_q).to.eql(qCID);
+    expect(parentPostType_q).to.equal(PostType.QUESTION);
+    expect(parentPostId_q).to.eql(QID);
+    expect(author_q).to.equal(addresses[2]);
+
+    const {
+      id: id_a,
+      parentPostType: parentPostType_a,
+      parentPostId: parentPostId_a,
+      author: author_a,
+    } = await stack3.getCommentById(aCID);
+    expect(id_a).to.eql(aCID);
+    expect(parentPostType_a).to.equal(PostType.ANSWER);
+    expect(parentPostId_a).to.eql(AID);
+    expect(author_a).to.equal(addresses[2]);
+  });
+
+  it("3. Successful comment post SHOULD be reflected in Parent Post (Question / Answer) structs", async () => {
+    const { comments: qCommentsInit } = await stack3.getQuestionById(QID);
+    const { comments: aCommentsInit } = await stack3.getAnswerById(AID);
+
+    const { qCID, aCID } = await postCommentQ1A1(QID, AID);
+
+    const { comments: qCommentsFinal } = await stack3.getQuestionById(QID);
+    const { comments: aCommentsFinal } = await stack3.getAnswerById(AID);
+
+    expect(qCommentsFinal.length).to.equal(qCommentsInit.length + 1);
+    expect(aCommentsFinal.length).to.equal(aCommentsInit.length + 1);
+
+    expect(qCommentsFinal[qCommentsFinal.length - 1]).to.eql(qCID);
+    expect(aCommentsFinal[qCommentsFinal.length - 1]).to.eql(aCID);
+  });
+
+  it("4. Successful comment post SHOULD be reflected in `author` User struct", async () => {
+    const { comments: commentsInit } = await stack3.getUserByAddress(
+      addresses[2]
+    );
+
+    const { qCID, aCID } = await postCommentQ1A1(QID, AID);
+
+    const { comments: commentsFinal } = await stack3.getUserByAddress(
+      addresses[2]
+    );
+
+    expect(commentsFinal.length).to.equal(commentsInit.length + 2);
+
+    expect(commentsFinal[commentsFinal.length - 1]).to.eql(aCID);
+    expect(commentsFinal[commentsFinal.length - 2]).to.eql(qCID);
+  });
+
+  it("5. Unregistered addresses SHOULD NOT be able to call the function", async () => {
+    await expect(
+      stack3
+        .connect(signers[6])
+        .postComment(PostType.QUESTION, QID, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: User not registered");
+  });
+
+  it("6. Function SHOULD NOT execute if invalid `postType` param is passed", async () => {
+    const INVALID_POST_TYPE = PostType.QUESTION + 3;
+    await expect(
+      stack3
+        .connect(signers[2])
+        .postComment(INVALID_POST_TYPE, QID, hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Invalid post type");
+  });
+
+  it("7. Function SHOULD NOT execute if invalid `postId` param is passed", async () => {
+    await expect(
+      stack3
+        .connect(signers[2])
+        .postComment(PostType.QUESTION, QID.add(99), hashedSecret)
+    ).to.eventually.be.rejectedWith("Stack3: Invalid post id");
+  });
+
+  it("8. Function SHOULD NOT execute if invalid `secret` param is passed", async () => {
+    const { hashedSecret: invalidSecret } =
+      requestMerkleSecret("NOT-VALID-PHRASE");
+    await expect(
+      stack3
+        .connect(signers[2])
+        .postComment(PostType.QUESTION, QID, invalidSecret)
     ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
   });
 });
