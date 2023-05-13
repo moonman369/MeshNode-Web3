@@ -64,7 +64,7 @@ const deployStack3 = async (
   await stack3.deployed();
 
   console.log(
-    `Stack3 contract has been deployed at address: ${stack3.address}\n\n`
+    `Stack3 contract has been deployed at address: ${stack3.address}\n`
   );
 
   return stack3;
@@ -96,11 +96,22 @@ const main = async () => {
   const { merkleRoot, hashedSecret } = requestMerkleSecret(
     process.env.SECRET_PHRASE || "Stack3_Merkle_Secret_Seed_Phrase"
   );
-  await deployStack3(
+  const stack3 = await deployStack3(
     deployer.address,
     stack3Badges.address,
     INIT_TAG_COUNT,
     merkleRoot
+  );
+
+  const tx = await stack3Badges
+    .connect(deployer)
+    .setStack3Address(stack3.address);
+  await tx.wait();
+  console.log(
+    "Stack3 address has been set to Stack3Badges contract successfully."
+  );
+  console.log(
+    `Stack3 address from Stack3Badges: ${await stack3Badges.s_stack3Address()}\n\n`
   );
 
   console.log(
