@@ -15,7 +15,8 @@ let stack3Badges;
 
 const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-const BADGES_URI = "uri/badges/";
+const POST_URI = "uri/post/";
+const BADGES_URI = "uri/badge/";
 
 const INIT_TAG_COUNT = 30;
 const { hashedSecret, merkleRoot } = requestMerkleSecret(SECRET_PHRASE);
@@ -47,14 +48,16 @@ describe("I. Registering User", () => {
 
   it("1. Addresses SHOULD be able to register themselves as users", async () => {
     const tx = await expect(
-      stack3.connect(signers[0]).registerUser(hashedSecret)
+      stack3.connect(signers[0]).registerUser(POST_URI, hashedSecret)
     ).to.eventually.be.fulfilled;
     const { events } = await tx.wait();
     UID = events[1].args.id;
   });
 
-  it("2. Custom `NewUser` event should be emitted on successful user registration", async () => {
-    const tx = await stack3.connect(signers[2]).registerUser(hashedSecret);
+  it("2. Custom `NewUser` event SHOULD be emitted on successful user registration", async () => {
+    const tx = await stack3
+      .connect(signers[2])
+      .registerUser(POST_URI, hashedSecret);
     const { events } = await tx.wait();
     // console.log(stack3.filters.NewUser());
     expect(events[1].eventSignature).to.equal(
@@ -72,6 +75,7 @@ describe("I. Registering User", () => {
       questions,
       answers,
       comments,
+      uri,
     } = await stack3.getUserByAddress(addresses[0]);
 
     expect(id).to.eql(UID);
@@ -82,6 +86,7 @@ describe("I. Registering User", () => {
     expect(questions).to.eql([]);
     expect(answers).to.eql([]);
     expect(comments).to.eql([]);
+    expect(uri).to.equal(POST_URI);
   });
 
   it("4. Addresses SHOULD receive a User Badge NFT after sucessful registration.", async () => {
@@ -93,7 +98,7 @@ describe("I. Registering User", () => {
 
   it("5. Addresses already registered as User SHOULD NOT be able to call.", async () => {
     await expect(
-      stack3.connect(signers[0]).registerUser(hashedSecret)
+      stack3.connect(signers[0]).registerUser(POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User already registered");
   });
 
@@ -101,7 +106,7 @@ describe("I. Registering User", () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(
-      stack3.connect(signers[0]).registerUser(invalidSecret)
+      stack3.connect(signers[0]).registerUser(POST_URI, invalidSecret)
     ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
   });
 });
@@ -114,14 +119,14 @@ describe("II. Posting questions", () => {
 
   it("1. Registered users SHOULD be able to post Questions.", async () => {
     await expect(
-      stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret)
+      stack3.connect(signers[0]).postQuestion(tagsParam, POST_URI, hashedSecret)
     ).to.eventually.be.fulfilled;
   });
 
-  it("2. Custom `NewQuestion` event should be emitted on successful postQuestion call", async () => {
+  it("2. Custom `NewQuestion` event SHOULD be emitted on successful postQuestion call", async () => {
     const tx = await stack3
       .connect(signers[0])
-      .postQuestion(tagsParam, hashedSecret);
+      .postQuestion(tagsParam, POST_URI, hashedSecret);
     const { events } = await tx.wait();
     // console.log(stack3.filters.NewUser());
     expect(events[0].eventSignature).to.equal(
@@ -129,7 +134,7 @@ describe("II. Posting questions", () => {
     );
   });
 
-  it("3. Question authors User state must be updated accordingly", async () => {
+  it("3. Question authors User state SHOULD be updated accordingly", async () => {
     const { questions } = await stack3.getUserByAddress(addresses[0]);
     const newQID = questions[questions.length - 1];
     expect(questions.length).to.equal(2);
@@ -150,6 +155,7 @@ describe("II. Posting questions", () => {
       tags,
       comments,
       answers,
+      uri,
     } = await stack3.getQuestionById(newQID);
 
     expect(bestAnswerChosen).to.equal(false);
@@ -160,18 +166,19 @@ describe("II. Posting questions", () => {
     expect(tags).to.eql(tagsParam);
     expect(comments).to.eql([]);
     expect(answers).to.eql([]);
+    expect(uri).to.equal(POST_URI);
   });
 
   it("5. Unregistered addresses SHOULD NOT be able to call the function", async () => {
     await expect(
-      stack3.connect(signers[1]).postQuestion(tagsParam, hashedSecret)
+      stack3.connect(signers[1]).postQuestion(tagsParam, POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
   it("6. Users SHOULD NOT be able to pass more than 10 tags per question.", async () => {
     const gt10Tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     await expect(
-      stack3.connect(signers[0]).postQuestion(gt10Tags, hashedSecret)
+      stack3.connect(signers[0]).postQuestion(gt10Tags, POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Max tag count is 10");
   });
 
@@ -179,7 +186,9 @@ describe("II. Posting questions", () => {
     const { hashedSecret: invalidSecret } =
       requestMerkleSecret("NOT-VALID-PHRASE");
     await expect(
-      stack3.connect(signers[0]).postQuestion(tagsParam, invalidSecret)
+      stack3
+        .connect(signers[0])
+        .postQuestion(tagsParam, POST_URI, invalidSecret)
     ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
   });
 });
@@ -188,12 +197,12 @@ describe("III. Vote on question", () => {
   const tagsParam = [1, 5, 7, 8, 3, 9].map((tag) => BigNumber.from(tag));
   let QID;
   beforeEach(async () => {
-    stack3.connect(signers[0]).registerUser(hashedSecret);
+    stack3.connect(signers[0]).registerUser(POST_URI, hashedSecret);
 
-    stack3.connect(signers[1]).registerUser(hashedSecret);
-    stack3.connect(signers[2]).registerUser(hashedSecret);
+    stack3.connect(signers[1]).registerUser(POST_URI, hashedSecret);
+    stack3.connect(signers[2]).registerUser(POST_URI, hashedSecret);
 
-    stack3.connect(signers[0]).postQuestion(tagsParam, hashedSecret);
+    stack3.connect(signers[0]).postQuestion(tagsParam, POST_URI, hashedSecret);
     const { questions } = await stack3.getUserByAddress(addresses[0]);
     QID = questions[questions.length - 1];
   });
@@ -291,19 +300,22 @@ describe("IV. Posting answers", () => {
   });
 
   const postAnswer = async (QID) => {
-    await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    await stack3.connect(signers[1]).postAnswer(QID, POST_URI, hashedSecret);
     const { answers } = await stack3.getUserByAddress(addresses[1]);
     const AID = answers[answers.length - 1];
     return AID;
   };
 
   it("1. Registered User SHOULD be able to postAnswers to any Question", async () => {
-    await expect(stack3.connect(signers[1]).postAnswer(QID, hashedSecret)).to
-      .eventually.be.fulfilled;
+    await expect(
+      stack3.connect(signers[1]).postAnswer(QID, POST_URI, hashedSecret)
+    ).to.eventually.be.fulfilled;
   });
 
-  it("2. Custom `NewAnswer` event should be emitted on successful `postAnswer` call", async () => {
-    const tx = await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+  it("2. Custom `NewAnswer` event SHOULD be emitted on successful `postAnswer` call", async () => {
+    const tx = await stack3
+      .connect(signers[1])
+      .postAnswer(QID, POST_URI, hashedSecret);
     const { events } = await tx.wait();
     expect(events[0].eventSignature).to.equal(
       "NewAnswer(uint256,uint256,uint256,address)"
@@ -335,7 +347,7 @@ describe("IV. Posting answers", () => {
   });
 
   it("5. New Answer SHOULD be reflected in User struct state", async () => {
-    await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    await stack3.connect(signers[1]).postAnswer(QID, POST_URI, hashedSecret);
     const newAID = (await stack3.getTotalCounts())[2];
     const { answers } = await stack3.getUserByAddress(addresses[1]);
     const AIDFromU = answers[answers.length - 1];
@@ -345,13 +357,15 @@ describe("IV. Posting answers", () => {
 
   it("6. Unregistered addresses SHOULD not be able to call the function", async () => {
     await expect(
-      stack3.connect(signers[3]).postAnswer(QID, hashedSecret)
+      stack3.connect(signers[3]).postAnswer(QID, POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
   it("7. Function SHOULD NOT execute if invalid `QuestionId` param is passed", async () => {
     await expect(
-      stack3.connect(signers[1]).postAnswer(QID.add(100), hashedSecret)
+      stack3
+        .connect(signers[1])
+        .postAnswer(QID.add(100), POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid question id");
   });
 
@@ -372,7 +386,7 @@ describe("V. Voting on answers.", () => {
   });
 
   const postAnswer = async (QID) => {
-    await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    await stack3.connect(signers[1]).postAnswer(QID, POST_URI, hashedSecret);
     const { answers } = await stack3.getUserByAddress(addresses[1]);
     const AID = answers[answers.length - 1];
     return AID;
@@ -384,7 +398,7 @@ describe("V. Voting on answers.", () => {
   };
 
   it("1. Registered addresses SHOULD be able to vote on any Answer", async () => {
-    await stack3.connect(signers[3]).registerUser(hashedSecret);
+    await stack3.connect(signers[3]).registerUser(POST_URI, hashedSecret);
     await expect(stack3.connect(signers[2]).voteAnswer(AID, 1, hashedSecret)).to
       .eventually.be.fulfilled;
     await expect(stack3.connect(signers[3]).voteAnswer(AID, 1, hashedSecret)).to
@@ -510,12 +524,14 @@ describe("VI. Choosing best answer", () => {
     const tags = [1, 2, 3, 4, 5];
     const tx1 = await stack3
       .connect(signers[0])
-      .postQuestion(tags, hashedSecret);
+      .postQuestion(tags, POST_URI, hashedSecret);
     const { events: qEvents } = await tx1.wait();
     // console.log(events);
     QID = qEvents[0].args.id;
 
-    const tx2 = await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const tx2 = await stack3
+      .connect(signers[1])
+      .postAnswer(QID, POST_URI, hashedSecret);
     const { events: aEvents } = await tx2.wait();
     // console.log(events);
     AID = aEvents[0].args.id;
@@ -596,12 +612,14 @@ describe("VII. Comment on post", () => {
     const tags = [1, 2, 3, 4, 5];
     const tx1 = await stack3
       .connect(signers[0])
-      .postQuestion(tags, hashedSecret);
+      .postQuestion(tags, POST_URI, hashedSecret);
     const { events: qEvents } = await tx1.wait();
     // console.log(events);
     QID = qEvents[qEvents.length - 1].args.id;
 
-    const tx2 = await stack3.connect(signers[1]).postAnswer(QID, hashedSecret);
+    const tx2 = await stack3
+      .connect(signers[1])
+      .postAnswer(QID, POST_URI, hashedSecret);
     const { events: aEvents } = await tx2.wait();
     // console.log(events);
     AID = aEvents[aEvents.length - 1].args.id;
@@ -610,12 +628,12 @@ describe("VII. Comment on post", () => {
   const postCommentQ1A1 = async (QID, AID) => {
     const tx1 = await stack3
       .connect(signers[2])
-      .postComment(PostType.QUESTION, QID, hashedSecret);
+      .postComment(PostType.QUESTION, QID, POST_URI, hashedSecret);
     const { events: qEvents } = await tx1.wait();
 
     const tx2 = await stack3
       .connect(signers[2])
-      .postComment(PostType.ANSWER, AID, hashedSecret);
+      .postComment(PostType.ANSWER, AID, POST_URI, hashedSecret);
 
     const { events: aEvents } = await tx2.wait();
 
@@ -629,10 +647,12 @@ describe("VII. Comment on post", () => {
     await expect(
       stack3
         .connect(signers[2])
-        .postComment(PostType.QUESTION, QID, hashedSecret)
+        .postComment(PostType.QUESTION, QID, POST_URI, hashedSecret)
     ).to.eventually.be.fulfilled;
     await expect(
-      stack3.connect(signers[2]).postComment(PostType.ANSWER, AID, hashedSecret)
+      stack3
+        .connect(signers[2])
+        .postComment(PostType.ANSWER, AID, POST_URI, hashedSecret)
     ).to.eventually.be.fulfilled;
   });
 
@@ -699,7 +719,7 @@ describe("VII. Comment on post", () => {
     await expect(
       stack3
         .connect(signers[6])
-        .postComment(PostType.QUESTION, QID, hashedSecret)
+        .postComment(PostType.QUESTION, QID, POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: User not registered");
   });
 
@@ -708,7 +728,7 @@ describe("VII. Comment on post", () => {
     await expect(
       stack3
         .connect(signers[2])
-        .postComment(INVALID_POST_TYPE, QID, hashedSecret)
+        .postComment(INVALID_POST_TYPE, QID, POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid post type");
   });
 
@@ -716,7 +736,7 @@ describe("VII. Comment on post", () => {
     await expect(
       stack3
         .connect(signers[2])
-        .postComment(PostType.QUESTION, QID.add(99), hashedSecret)
+        .postComment(PostType.QUESTION, QID.add(99), POST_URI, hashedSecret)
     ).to.eventually.be.rejectedWith("Stack3: Invalid post id");
   });
 
@@ -726,7 +746,7 @@ describe("VII. Comment on post", () => {
     await expect(
       stack3
         .connect(signers[2])
-        .postComment(PostType.QUESTION, QID, invalidSecret)
+        .postComment(PostType.QUESTION, QID, POST_URI, invalidSecret)
     ).to.eventually.be.rejectedWith("Stack3: Unverified source of call");
   });
 });

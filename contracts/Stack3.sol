@@ -64,6 +64,7 @@ contract Stack3 is Ownable {
         uint256 [] questions;
         uint256 [] answers;
         uint256 [] comments;
+        string uri;
     }
 
 
@@ -76,7 +77,7 @@ contract Stack3 is Ownable {
         uint256 [] tags;
         uint256 [] comments;
         uint256 [] answers;
-        // string uri;
+        string uri;
     }
 
     struct Answer {
@@ -87,7 +88,7 @@ contract Stack3 is Ownable {
         uint256 downvotes;
         address author;
         uint256 [] comments;
-        // string uri;
+        string uri;
     }
 
     struct Comment {
@@ -95,7 +96,7 @@ contract Stack3 is Ownable {
         PostType parentPostType;
         uint256 parentPostId;
         address author;
-        // string uri;
+        string uri;
     }
 
 
@@ -132,7 +133,7 @@ contract Stack3 is Ownable {
     }
 
     
-    function registerUser (bytes32 _secret) external {
+    function registerUser (string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
         require (_callerIsWallet(msg.sender));
         require (!_userExists(msg.sender), "Stack3: User already registered");
@@ -140,6 +141,7 @@ contract Stack3 is Ownable {
         
         s_users[msg.sender].id = newId;
         s_users[msg.sender].userAddress = msg.sender;
+        s_users[msg.sender].uri = _uri;
 
         i_stack3Badges.mintUserBadge(msg.sender);
 
@@ -148,7 +150,7 @@ contract Stack3 is Ownable {
     }
 
 
-    function postQuestion (uint256 [] memory _tags, bytes32 _secret) external {
+    function postQuestion (uint256 [] memory _tags, string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
         require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
@@ -160,6 +162,7 @@ contract Stack3 is Ownable {
         s_questions[newId].id = newId;
         s_questions[newId].author = msg.sender;
         s_questions[newId].tags = _tags;
+        s_questions[newId].uri = _uri;
 
         for (uint256 i=0; i < _tags.length; i++) {
             s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
@@ -199,7 +202,7 @@ contract Stack3 is Ownable {
     }
 
 
-    function postAnswer (uint256 _qid, bytes32 _secret) external {
+    function postAnswer (uint256 _qid, string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
         require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
@@ -213,6 +216,7 @@ contract Stack3 is Ownable {
         s_answers[newId].id = newId;
         s_answers[newId].qid = _qid;
         s_answers[newId].author = msg.sender;
+        s_answers[newId].uri = _uri;
 
         for (uint256 i=0; i < s_questions[_qid].tags.length; i++) {
             s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
@@ -267,7 +271,7 @@ contract Stack3 is Ownable {
 
 
 
-    function postComment (uint8 _postType, uint256 _postId, bytes32 _secret) external {
+    function postComment (uint8 _postType, uint256 _postId, string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
         require (_callerIsWallet(msg.sender));
         require (_userExists(msg.sender), "Stack3: User not registered");
@@ -285,7 +289,7 @@ contract Stack3 is Ownable {
 
         s_comments[newId].id = newId;
         s_comments[newId].parentPostType = PostType(_postType);
-
+        s_comments[newId].uri = _uri;
         s_comments[newId].parentPostId = _postId;
         s_comments[newId].author = msg.sender;
 
