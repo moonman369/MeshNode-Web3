@@ -41,13 +41,15 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     
     uint256 private immutable i_rareMintDropInterval;
     Stack3RareMintNFT private immutable i_rareNft;
-    Stack3 private immutable i_stack3;
     uint256 private s_lastUpkeepTimestamp;
     uint256 private s_randomRewardsMaxSupply;
-    mapping (address => bool) s_rareMintReceived;
+    mapping (address => bool) s_rareMintRewarded;
+    // mapping (address => bool) s_claimed;
     address [] s_topUsers;
+    uint256 [] s_randomWords;
 
     uint256 private s_randomRewardsCounter;
+    address public s_winners;
     
 
     constructor(
@@ -57,8 +59,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         uint32 callbackGasLimit,
         uint256 _rareMintDropInterval,
         uint256 _randomRewardsMaxSupply,
-        address _rareNftAddress,
-        address _stack3Address
+        address _rareNftAddress
     ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
         i_gasLane = gasLane;
@@ -66,7 +67,6 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         i_callbackGasLimit = callbackGasLimit;
         i_rareMintDropInterval = _rareMintDropInterval;
         i_rareNft = Stack3RareMintNFT(_rareNftAddress);
-        i_stack3 = Stack3(_stack3Address);
         s_lastUpkeepTimestamp = block.timestamp;
         s_randomRewardsMaxSupply = _randomRewardsMaxSupply;
     }
@@ -117,24 +117,37 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         uint256, /* requestId */
         uint256[] memory randomWords
     ) internal override {
-
-        // address [] memory topUsers = s_topUsers;
-        
-        for (uint256 i = 0; i < randomWords.length; i++) {
-            address winner = s_topUsers[randomWords[i] % s_topUsers.length];
-
-            if(!s_rareMintReceived[winner] && i_rareNft.balanceOf(winner) <= 3) {
-                address collection = i_rareNft.collectionMintAddress();
-                s_rareMintReceived[winner] = true;
-                i_rareNft.transferFrom(collection, winner, s_randomRewardsCounter++);
-
-            }
-        }
+        s_randomWords = randomWords;
     }
 
-    
 
+    function checkForUnclaimedRewards (address _user) public view returns (bool unclaimedRewardsPresent) {
+        require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");
+        if (!s_rareMintRewarded[_user] && i_rareNft.balanceOf(_user) <= 3) {
+            unchecked {
+                for (uint256 i = 0; i < s_randomWords.length; ) {
+                    if (
+                        s_topUsers[s_randomWords[i] % s_topUsers.length] == _user
+                    ) {
+                        unclaimedRewardsPresent = true;
+                    }
+                    i++;
+                }
+            }  
+        }
+        else {
+            unclaimedRewardsPresent = false;
+        } 
+    }
 
-    
+    function claimReward(address _user) external {
+        require (checkForUnclaimedRewards(_user), "Stack3RareMintNFT: No claimable rewards found.");
 
+        s_rareMintRewarded[_user] = true;
+        i_rareNft.transferFrom(
+            i_rareNft.collectionMintAddress(), 
+            _user, 
+            s_randomRewardsCounter++
+        );
+    }
 }
