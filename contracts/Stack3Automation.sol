@@ -41,6 +41,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     
     uint256 private immutable i_rareMintDropInterval;
     Stack3RareMintNFT private immutable i_rareNft;
+    Stack3 private immutable i_stack3;
     uint256 private s_lastUpkeepTimestamp;
     uint256 private s_randomRewardsMaxSupply;
     mapping (address => bool) s_rareMintRewarded;
@@ -59,7 +60,8 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         uint32 callbackGasLimit,
         uint256 _rareMintDropInterval,
         uint256 _randomRewardsMaxSupply,
-        address _rareNftAddress
+        address _rareNftAddress,
+        address _stack3Address
     ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
         i_gasLane = gasLane;
@@ -67,6 +69,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         i_callbackGasLimit = callbackGasLimit;
         i_rareMintDropInterval = _rareMintDropInterval;
         i_rareNft = Stack3RareMintNFT(_rareNftAddress);
+        i_stack3 = Stack3(_stack3Address);
         s_lastUpkeepTimestamp = block.timestamp;
         s_randomRewardsMaxSupply = _randomRewardsMaxSupply;
     }
@@ -149,5 +152,9 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
             _user, 
             s_randomRewardsCounter++
         );
+    }
+
+    function getTimeTillNextUpkeep () public view returns (int256) {
+        return int256(i_rareMintDropInterval - (block.timestamp - s_lastUpkeepTimestamp));
     }
 }
