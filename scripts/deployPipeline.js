@@ -1,88 +1,21 @@
 const { ethers } = require("hardhat");
 require("dotenv").config();
 const { requestMerkleSecret } = require("../merkle/setMerkleTree");
-
-const deployStack3RareNFT = async (
-  deployerAddress,
-  maxSupply,
-  collectionMintAddress,
-  baseUri
-) => {
-  const deployer = await ethers.getSigner(deployerAddress);
-
-  const Stack3RareMintNFT = await ethers.getContractFactory(
-    "Stack3RareMintNFT"
-  );
-
-  const stack3RareMintNft = await Stack3RareMintNFT.connect(deployer).deploy(
-    maxSupply,
-    collectionMintAddress,
-    baseUri
-  );
-
-  await stack3RareMintNft.deployed();
-
-  console.log(
-    `Stack3RareMintNFT contract has been deployed at address: ${stack3RareMintNft.address}\n`
-  );
-
-  return stack3RareMintNft;
-};
-
-const deployStack3Badges = async (deployerAddress, baseUri) => {
-  const deployer = await ethers.getSigner(deployerAddress);
-
-  const Stack3Badges = await ethers.getContractFactory("Stack3Badges");
-
-  const stack3Badges = await Stack3Badges.connect(deployer).deploy(baseUri);
-
-  await stack3Badges.deployed();
-
-  console.log(
-    `Stack3Badges contract has been deployed at address: ${stack3Badges.address}\n`
-  );
-
-  return stack3Badges;
-};
-
-const deployStack3 = async (
-  deployerAddress,
-  stack3BadgesAddress,
-  initTagCount,
-  merkleRoot
-) => {
-  const deployer = await ethers.getSigner(deployerAddress);
-
-  const Stack3 = await ethers.getContractFactory("Stack3");
-
-  const stack3 = await Stack3.connect(deployer).deploy(
-    stack3BadgesAddress,
-    initTagCount,
-    merkleRoot
-  );
-
-  await stack3.deployed();
-
-  console.log(
-    `Stack3 contract has been deployed at address: ${stack3.address}\n`
-  );
-
-  return stack3;
-};
+const { deployStack3, deployStack3Badges } = require("./deployFunctions");
 
 const main = async () => {
   const [deployer] = await ethers.getSigners();
 
   // Stack3RareMint
-  const COLLECTION_MINT_ADDRESS = /*"0x00000"*/ deployer.address;
-  const RARE_NFT_BASE_URI = "URI721/";
+  // const COLLECTION_MINT_ADDRESS = /*"0x00000"*/ deployer.address;
+  // const RARE_NFT_BASE_URI = "URI721/";
 
-  const stack3RareNft = await deployStack3RareNFT(
-    deployer.address,
-    1000,
-    COLLECTION_MINT_ADDRESS,
-    RARE_NFT_BASE_URI
-  );
+  // const stack3RareNft = await deployStack3RareNFT(
+  //   deployer.address,
+  //   1000,
+  //   COLLECTION_MINT_ADDRESS,
+  //   RARE_NFT_BASE_URI
+  // );
 
   // Stack3Badges
   const BADGES_BASE_URI = "URI1155/";
