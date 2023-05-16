@@ -149,6 +149,17 @@ contract Stack3 is Ownable {
     
     }
 
+    // ================================= TEMP ================================= //
+    function setUserURI (string memory _newUri, bytes32 _secret) public {
+        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
+        require (_userExists(msg.sender), "Stack3: User not registered");
+
+        s_users[msg.sender].uri = _newUri;
+    }
+    // ================================= TEMP ================================= //
+
+
 
     function postQuestion (uint256 [] memory _tags, string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
