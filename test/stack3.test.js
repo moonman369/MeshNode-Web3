@@ -42,6 +42,10 @@ before(async () => {
   await stack3Badges.connect(deployer).setStack3Address(stack3.address);
 });
 
+console.log(
+  "========================================STACK3========================================"
+);
+
 describe("I. Registering User", () => {
   //   beforeEach(async () => {});
   let UID;

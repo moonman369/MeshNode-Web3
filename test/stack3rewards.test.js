@@ -16,6 +16,7 @@ let stack3Badges;
 const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const BADGES_URI = "uri/badges/";
+const POST_URI = "uri/post/";
 
 const INIT_TAG_COUNT = 30;
 const { hashedSecret, merkleRoot } = requestMerkleSecret(SECRET_PHRASE);
@@ -41,11 +42,47 @@ before(async () => {
   await stack3Badges.connect(deployer).setStack3Address(stack3.address);
 });
 
-// describe("I. Registering User", () => {
-//     //   beforeEach(async () => {});
+describe(`========================================STACK3 BADGES========================================\n\n\nI. Question Rewards`, () => {
+  // beforeEach(async () => {});
+  const tags = [1, 2, 3, 4, 5];
+  const postQuestion_X_n = async (n) => {
+    for (let i = 0; i < n; i++) {
+      await stack3
+        .connect(signers[0])
+        .postQuestion(tags, POST_URI, hashedSecret);
+    }
+  };
 
-//     it("1. Addresses SHOULD be able to register themselves as users", async () => {
-//       await expect(stack3.connect(signers[0]).registerUser(hashedSecret)).to
-//         .eventually.be.fulfilled;
-//     });
-// })
+  it("1. Users SHOULD receive particular badge nft on posting 10 questions", async () => {
+    await stack3.connect(signers[0]).registerUser(BADGES_URI, hashedSecret);
+    await postQuestion_X_n(10);
+    const badgeId_10Q = await stack3Badges.QUESTION_10();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_10Q)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("2. Users SHOULD receive particular badge nft on posting 25 questions", async () => {
+    await postQuestion_X_n(25 - 10 /* = 15*/);
+    const badgeId_25Q = await stack3Badges.QUESTION_25();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_25Q)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("3. Users SHOULD receive particular badge nft on posting 50 questions", async () => {
+    await postQuestion_X_n(50 - 25 /* = 25*/);
+    const badgeId_50Q = await stack3Badges.QUESTION_50();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_50Q)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("4. Users SHOULD receive particular badge nft on posting 100 questions", async () => {
+    await postQuestion_X_n(100 - 50 /* = 50 */);
+    const badgeId_100Q = await stack3Badges.QUESTION_100();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_100Q)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+});
