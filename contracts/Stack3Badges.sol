@@ -64,7 +64,7 @@ contract Stack3Badges is ERC1155, Ownable {
                 _mint(_user, QUESTION_25, 1, "");
             }
             else if (_numPost == 50) {
-                _mint(_user, QUESTION_25, 1, "");
+                _mint(_user, QUESTION_50, 1, "");
             }
             else if (_numPost == 100) {
                 _mint(_user, QUESTION_100, 1, "");

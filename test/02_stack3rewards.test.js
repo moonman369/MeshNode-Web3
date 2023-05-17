@@ -42,7 +42,7 @@ before(async () => {
   await stack3Badges.connect(deployer).setStack3Address(stack3.address);
 });
 
-describe(`========================================STACK3 BADGES========================================\n\n\nI. Question Rewards`, () => {
+describe(`\n\n\n========================================STACK3 BADGES========================================\n\n\nI. Question Rewards`, () => {
   // beforeEach(async () => {});
   const tags = [1, 2, 3, 4, 5];
   const postQuestion_X_n = async (n) => {
@@ -82,6 +82,68 @@ describe(`========================================STACK3 BADGES=================
     await postQuestion_X_n(100 - 50 /* = 50 */);
     const badgeId_100Q = await stack3Badges.QUESTION_100();
     expect(await stack3Badges.balanceOf(addresses[0], badgeId_100Q)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+});
+
+describe("Answer Rewards", () => {
+  let QID;
+  const postAnswer_X_n = async (QID, n) => {
+    for (let i = 0; i < n; i++) {
+      await stack3.connect(signers[0]).postAnswer(QID, POST_URI, hashedSecret);
+    }
+  };
+
+  it("1. Users SHOULD receive particular badge nft on posting 10 answers", async () => {
+    const tx = await stack3
+      .connect(signers[0])
+      .postQuestion([1, 2, 3, 4], POST_URI, hashedSecret);
+    const { events } = await tx.wait();
+    QID = events[0].args.id;
+    await postAnswer_X_n(QID, 10);
+    const badgeId_10A = await stack3Badges.ANSWER_10();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_10A)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("2. Users SHOULD receive particular badge nft on posting 25 answers", async () => {
+    await postAnswer_X_n(QID, 15);
+    const badgeId_25A = await stack3Badges.ANSWER_25();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_25A)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("3. Users SHOULD receive particular badge nft on posting 50 answers", async () => {
+    await postAnswer_X_n(QID, 25);
+    const badgeId_50A = await stack3Badges.ANSWER_50();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_50A)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("4. Users SHOULD receive particular badge nft on posting 100 answers", async () => {
+    await postAnswer_X_n(QID, 50);
+    const badgeId_100A = await stack3Badges.ANSWER_100();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_100A)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("5. Users SHOULD receive particular badge nft on posting 200 answers", async () => {
+    await postAnswer_X_n(QID, 100);
+    const badgeId_200A = await stack3Badges.ANSWER_200();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_200A)).to.eql(
+      BigNumber.from(1)
+    );
+  });
+
+  it("6. Users SHOULD receive particular badge nft on posting 500 answers", async () => {
+    await postAnswer_X_n(QID, 300);
+    const badgeId_500A = await stack3Badges.ANSWER_500();
+    expect(await stack3Badges.balanceOf(addresses[0], badgeId_500A)).to.eql(
       BigNumber.from(1)
     );
   });
