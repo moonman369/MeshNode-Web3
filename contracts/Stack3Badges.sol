@@ -163,6 +163,7 @@ contract Stack3Badges is ERC1155, Ownable {
     }
 
     function getUserBadges (address _user) public view returns (uint256 [] memory) {
+        require (_user != address(0), "Stack3Badges: Null address passed");
         uint256 [] memory owned = new uint256 [] (TAG_REWARDS_START + s_maxTagCount);
         uint256 count = 0;
         for (uint256 i = 1; i <= (TAG_REWARDS_START + s_maxTagCount); i++) {
