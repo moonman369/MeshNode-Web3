@@ -35,12 +35,14 @@ contract Stack3Badges is ERC1155, Ownable {
     uint256 public constant TAG_REWARDS_START = 24;
 
     string private s_baseUri;
+    uint256 private s_maxTagCount;
     // Stack3 private immutable i_stack3;
     address public s_stack3Address;
 
 
-    constructor (string memory _baseUri) ERC1155 (_baseUri) {
+    constructor (uint256 _maxTagCount, string memory _baseUri) ERC1155 (_baseUri) {
         // i_stack3 = Stack3(_stack3Address);
+        s_maxTagCount = _maxTagCount;
     }
 
     function setStack3Address(address _stack3Address) external onlyOwner {
@@ -150,6 +152,7 @@ contract Stack3Badges is ERC1155, Ownable {
     function updateAndRewardTagBadges (uint256 _tagId, uint256 _numTag, address _user/*, bytes32 _secret*/) external {
         // require(_verifySecret(_secret), "Stack3Badges: Unverified source of call");
         require (_verifyCaller(msg.sender), "Stack3Badges: Caller is not Stack3 contract");
+        require (_tagId < s_maxTagCount, "Stack3Badges: Invalid tag id");
         if (_numTag == 100) {
             _mint(_user, TAG_REWARDS_START + _tagId, 1, "");
         }
@@ -159,9 +162,30 @@ contract Stack3Badges is ERC1155, Ownable {
         return _caller == s_stack3Address;
     }
 
-    function getSender() public view returns (address) {
-        return msg.sender;
+    function getUserBadges (address _user) public view returns (uint256 [] memory) {
+        uint256 [] memory owned = new uint256 [] (TAG_REWARDS_START + s_maxTagCount);
+        uint256 count = 0;
+        for (uint256 i = 1; i <= (TAG_REWARDS_START + s_maxTagCount); i++) {
+            if (balanceOf(_user, i) > 0) {
+                owned[count++] = i;
+                // count++;
+            }
+        }
+
+        return owned;
     }
+
+    // function devMint() public onlyOwner {
+    //     _mint(msg.sender, 1, 1, "");
+    //     _mint(msg.sender, 5, 1, "");
+    //     _mint(msg.sender, 10, 1, "");
+    //     _mint(msg.sender, 20, 1, "");
+    //     _mint(msg.sender, 25, 1, "");
+    // } 
+
+    // function getSender() public view returns (address) {
+    //     return msg.sender;
+    // }
 
 
 }
