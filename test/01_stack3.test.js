@@ -42,7 +42,7 @@ before(async () => {
   await stack3Badges.connect(deployer).setStack3Address(stack3.address);
 });
 
-describe("I. Registering User", () => {
+describe("========================================STACK3========================================\n\n\nI. Registering User", () => {
   //   beforeEach(async () => {});
   let UID;
 

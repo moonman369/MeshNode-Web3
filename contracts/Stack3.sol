@@ -122,6 +122,7 @@ contract Stack3 is Ownable {
     mapping (address => mapping (uint256 => bool)) public s_userVotedAnswer;
     mapping (address => mapping (uint256 => uint256)) public s_userQuestionTagCounts;
     mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
+    mapping (uint256 => mapping(uint256 => bool)) private s_tagsToQuestionsMapping;
     uint256 public s_initTagCount;
 
 
@@ -174,10 +175,10 @@ contract Stack3 is Ownable {
         s_questions[newId].author = msg.sender;
         s_questions[newId].tags = _tags;
         s_questions[newId].uri = _uri;
-        // s_allQuestions.push(s_questions[newId]);
 
         for (uint256 i=0; i < _tags.length; i++) {
             s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
+            s_tagsToQuestionsMapping[_tags[i]][newId] = true;
         }
 
         i_stack3Badges.updateAndRewardBadges(0, s_users[msg.sender].questions.length, msg.sender);
@@ -345,6 +346,11 @@ contract Stack3 is Ownable {
 
     function _verifySecret (bytes32 _secret) internal view returns (bool) {
         return MerkleProof.verify(s_merkleProof, s_merkleRoot, keccak256(abi.encodePacked(_secret)));
+    }
+
+    function _checkIfQuestionHasTag (uint256 _tid, uint256 _qid) public view returns (bool) {
+        require(_questionExists(_qid), "Stack3: Invalid question id");
+        return s_tagsToQuestionsMapping[_tid][_qid];
     }
 
 
