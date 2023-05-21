@@ -29,12 +29,15 @@ const deployStack3RareNFT = async (
   return stack3RareMintNft;
 };
 
-const deployStack3Badges = async (deployerAddress, baseUri) => {
+const deployStack3Badges = async (deployerAddress, maxTagCount, baseUri) => {
   const deployer = await ethers.getSigner(deployerAddress);
 
   const Stack3Badges = await ethers.getContractFactory("Stack3Badges");
 
-  const stack3Badges = await Stack3Badges.connect(deployer).deploy(baseUri);
+  const stack3Badges = await Stack3Badges.connect(deployer).deploy(
+    maxTagCount,
+    baseUri
+  );
 
   await stack3Badges.deployed();
 
