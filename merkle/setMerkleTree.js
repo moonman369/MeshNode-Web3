@@ -75,3 +75,6 @@ const main = () => {
 module.exports = {
   requestMerkleSecret,
 };
+
+// Root: 0x10a4b01d43aa1d4cf8633a601fd0a75d90d3a1f9b7609ff93dcff8422430591d
+// Hashed Secret: 0x88df465d8a38374712a6784d60d6a43b5c67886b0e93c592d4517a8a8360c5d6

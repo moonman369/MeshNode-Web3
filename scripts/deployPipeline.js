@@ -19,13 +19,15 @@ const main = async () => {
 
   // Stack3Badges
   const BADGES_BASE_URI = "URI1155/";
+  const INIT_TAG_COUNT = 30;
+
   const stack3Badges = await deployStack3Badges(
     deployer.address,
+    INIT_TAG_COUNT,
     BADGES_BASE_URI
   );
 
   // Stack3
-  const INIT_TAG_COUNT = 30;
   const { merkleRoot, hashedSecret } = requestMerkleSecret(
     process.env.SECRET_PHRASE || "Stack3_Merkle_Secret_Seed_Phrase"
   );
