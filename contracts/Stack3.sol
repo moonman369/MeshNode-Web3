@@ -118,10 +118,10 @@ contract Stack3 is Ownable {
     mapping (uint256 => Answer) private s_answers;
     mapping (uint256 => Comment) private s_comments;
     
-    mapping (address => mapping (uint256 => bool)) public s_userVotedQuestion;
-    mapping (address => mapping (uint256 => bool)) public s_userVotedAnswer;
+    mapping (address => mapping (uint256 => int8)) public s_userVotedQuestion;
+    mapping (address => mapping (uint256 => int8)) public s_userVotedAnswer;
     mapping (address => mapping (uint256 => uint256)) public s_userQuestionTagCounts;
-    mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
+    // mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
     mapping (uint256 => mapping(uint256 => bool)) private s_tagsToQuestionsMapping;
     uint256 public s_initTagCount;
 
@@ -177,8 +177,13 @@ contract Stack3 is Ownable {
         s_questions[newId].uri = _uri;
 
         for (uint256 i=0; i < _tags.length; i++) {
-            s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
+            // s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
             s_tagsToQuestionsMapping[_tags[i]][newId] = true;
+            i_stack3Badges.updateAndRewardTagBadges(
+                _tags[i], 
+                (s_userQuestionTagCounts[msg.sender][_tags[i]]++) + 1, 
+                msg.sender
+            );
         }
 
         i_stack3Badges.updateAndRewardBadges(0, s_users[msg.sender].questions.length, msg.sender);
@@ -191,22 +196,21 @@ contract Stack3 is Ownable {
         require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_qid), "Stack3: Invalid question id");
-        require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has voted");
+        require (s_userVotedQuestion[msg.sender][_qid] == 0, "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote param");
 
         address author = s_questions[_qid].author;
 
         if (_vote == -1) {
             s_questions[_qid].downvotes += 1;
+            s_userVotedQuestion[msg.sender][_qid] = -1;
         }
         else {
             s_questions[_qid].upvotes += 1;
             s_users[author].qUpvotes += 1;
+            s_userVotedQuestion[msg.sender][_qid] = 1;
         }
 
-        
-    
-        s_userVotedQuestion[msg.sender][_qid] = true;
 
         i_stack3Badges.updateAndRewardBadges(1, s_users[author].qUpvotes + 1, author);
 
@@ -231,9 +235,9 @@ contract Stack3 is Ownable {
         s_answers[newId].author = msg.sender;
         s_answers[newId].uri = _uri;
 
-        for (uint256 i=0; i < s_questions[_qid].tags.length; i++) {
-            s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
-        }
+        // for (uint256 i=0; i < s_questions[_qid].tags.length; i++) {
+        //     s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
+        // }
 
         i_stack3Badges.updateAndRewardBadges(2, s_users[msg.sender].answers.length, msg.sender);
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
@@ -244,20 +248,21 @@ contract Stack3 is Ownable {
         require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_answerExists(_aid), "Stack3: Invalid answer id");
-        require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has voted");
+        require (s_userVotedAnswer[msg.sender][_aid] == 0, "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
 
         address author = s_answers[_aid].author;
         
         if (_vote == -1) {
             s_answers[_aid].downvotes += 1;
+            s_userVotedAnswer[msg.sender][_aid] = -1;
         }
         else {
             s_answers[_aid].upvotes += 1;
             s_users[author].aUpvotes += 1;
+            s_userVotedAnswer[msg.sender][_aid] = 1;
         }
 
-        s_userVotedAnswer[msg.sender][_aid] = true;
 
         i_stack3Badges.updateAndRewardBadges(3, s_users[author].aUpvotes + 1, author);
 
@@ -348,9 +353,15 @@ contract Stack3 is Ownable {
         return MerkleProof.verify(s_merkleProof, s_merkleRoot, keccak256(abi.encodePacked(_secret)));
     }
 
-    function _checkIfQuestionHasTag (uint256 _tid, uint256 _qid) public view returns (bool) {
-        require(_questionExists(_qid), "Stack3: Invalid question id");
-        return s_tagsToQuestionsMapping[_tid][_qid];
+    function getQuestionsByTag (uint256 _tid) public view returns (uint256 [] memory) {
+        uint256 [] memory taggedQuestions = new uint256 [] (s_questionIdCounter);
+        uint256 index = 0;
+        for (uint256 i = 1; i < s_questionIdCounter; i++) {
+            if (s_tagsToQuestionsMapping[_tid][i]) {
+                taggedQuestions[index++] = i;
+            }
+        }
+        return taggedQuestions;
     }
 
 
