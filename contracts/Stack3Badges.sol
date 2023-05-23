@@ -57,6 +57,7 @@ contract Stack3Badges is ERC1155, Ownable {
 
     function updateAndRewardBadges (uint8 _reqType, uint256 _numPost, address _user) external {
         require (_verifyCaller(msg.sender), "Stack3Badges: Caller is not Stack3 contract");
+        require (_numPost <= 500);
         if (_reqType == 0) {
             // uint256 numQ = i_stack3.getUserByAddress(_user).questions.length;
             if (_numPost == 10) { // Q posts
@@ -153,6 +154,7 @@ contract Stack3Badges is ERC1155, Ownable {
         // require(_verifySecret(_secret), "Stack3Badges: Unverified source of call");
         require (_verifyCaller(msg.sender), "Stack3Badges: Caller is not Stack3 contract");
         require (_tagId < s_maxTagCount, "Stack3Badges: Invalid tag id");
+        require (_numTag <= 100);
         if (_numTag == 100) {
             _mint(_user, TAG_REWARDS_START + _tagId, 1, "");
         }
@@ -175,18 +177,6 @@ contract Stack3Badges is ERC1155, Ownable {
 
         return owned;
     }
-
-    // function devMint() public onlyOwner {
-    //     _mint(msg.sender, 1, 1, "");
-    //     _mint(msg.sender, 5, 1, "");
-    //     _mint(msg.sender, 10, 1, "");
-    //     _mint(msg.sender, 20, 1, "");
-    //     _mint(msg.sender, 25, 1, "");
-    // } 
-
-    // function getSender() public view returns (address) {
-    //     return msg.sender;
-    // }
 
 
 }
