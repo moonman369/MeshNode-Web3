@@ -4,9 +4,12 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./Stack3.sol";
 
 contract Stack3Badges is ERC1155, Ownable {
+
+    using Strings for uint256;
 
     uint256 public constant USER = 0;
     uint256 public constant QUESTION_10 = 1;
@@ -43,6 +46,7 @@ contract Stack3Badges is ERC1155, Ownable {
     constructor (uint256 _maxTagId, string memory _baseUri) ERC1155 (_baseUri) {
         // i_stack3 = Stack3(_stack3Address);
         s_maxTagId = _maxTagId;
+        s_baseUri = _baseUri;
     }
 
     function setStack3Address(address _stack3Address) external onlyOwner {
@@ -173,11 +177,21 @@ contract Stack3Badges is ERC1155, Ownable {
         return _caller == s_stack3Address;
     }
 
+    function uri (uint256 _id) public view override returns (string memory) {
+        require (_id <= TAG_REWARDS_START + s_maxTagId * 4, "Stack3Badges: Invalid token id");
+        return string(abi.encodePacked(s_baseUri, _id.toString(), ".json"));
+    }
+
+    function tokenURI (uint256 _id) public view returns (string memory) {
+        require (_id <= TAG_REWARDS_START + s_maxTagId * 4, "Stack3Badges: Invalid token id");
+        return string(abi.encodePacked(s_baseUri, _id.toString(), ".json"));
+    }
+
     function getUserBadges (address _user) public view returns (uint256 [] memory) {
         require (_user != address(0), "Stack3Badges: Null address passed");
-        uint256 [] memory owned = new uint256 [] (TAG_REWARDS_START + s_maxTagId);
+        uint256 [] memory owned = new uint256 [] (TAG_REWARDS_START + s_maxTagId * 4);
         uint256 count = 0;
-        for (uint256 i = 1; i <= (TAG_REWARDS_START + s_maxTagId); i++) {
+        for (uint256 i = 1; i <= (TAG_REWARDS_START + s_maxTagId * 4); i++) {
             if (balanceOf(_user, i) > 0) {
                 owned[count++] = i;
             }
