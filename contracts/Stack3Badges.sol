@@ -35,14 +35,14 @@ contract Stack3Badges is ERC1155, Ownable {
     uint256 public constant TAG_REWARDS_START = 24;
 
     string private s_baseUri;
-    uint256 private s_maxTagCount;
+    uint256 private s_maxTagId;
     // Stack3 private immutable i_stack3;
     address public s_stack3Address;
 
 
-    constructor (uint256 _maxTagCount, string memory _baseUri) ERC1155 (_baseUri) {
+    constructor (uint256 _maxTagId, string memory _baseUri) ERC1155 (_baseUri) {
         // i_stack3 = Stack3(_stack3Address);
-        s_maxTagCount = _maxTagCount;
+        s_maxTagId = _maxTagId;
     }
 
     function setStack3Address(address _stack3Address) external onlyOwner {
@@ -153,10 +153,19 @@ contract Stack3Badges is ERC1155, Ownable {
     function updateAndRewardTagBadges (uint256 _tagId, uint256 _numTag, address _user/*, bytes32 _secret*/) external {
         // require(_verifySecret(_secret), "Stack3Badges: Unverified source of call");
         require (_verifyCaller(msg.sender), "Stack3Badges: Caller is not Stack3 contract");
-        require (_tagId < s_maxTagCount, "Stack3Badges: Invalid tag id");
-        require (_numTag <= 100);
-        if (_numTag == 100) {
+        require (_tagId <= s_maxTagId, "Stack3Badges: Invalid tag id");
+        require (_numTag <= 1000);
+        if (_numTag == 50) {
             _mint(_user, TAG_REWARDS_START + _tagId, 1, "");
+        }
+        else if (_numTag == 250) {
+            _mint(_user, TAG_REWARDS_START + _tagId + 1, 1, "");
+        }
+        else if (_numTag == 500) {
+            _mint(_user, TAG_REWARDS_START + _tagId + 2, 1, "");
+        }
+        else if (_numTag == 1000) {
+            _mint(_user, TAG_REWARDS_START + _tagId + 3, 1, "");
         }
     }
 
@@ -166,12 +175,11 @@ contract Stack3Badges is ERC1155, Ownable {
 
     function getUserBadges (address _user) public view returns (uint256 [] memory) {
         require (_user != address(0), "Stack3Badges: Null address passed");
-        uint256 [] memory owned = new uint256 [] (TAG_REWARDS_START + s_maxTagCount);
+        uint256 [] memory owned = new uint256 [] (TAG_REWARDS_START + s_maxTagId);
         uint256 count = 0;
-        for (uint256 i = 1; i <= (TAG_REWARDS_START + s_maxTagCount); i++) {
+        for (uint256 i = 1; i <= (TAG_REWARDS_START + s_maxTagId); i++) {
             if (balanceOf(_user, i) > 0) {
                 owned[count++] = i;
-                // count++;
             }
         }
 
