@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./Stack3Badges.sol";
+import "./Stack3Automation.sol";
 
 
 contract Stack3 is Ownable {
@@ -109,7 +110,7 @@ contract Stack3 is Ownable {
     uint256 private s_commentIdCounter;
     // uint256 private i_reservedTokensCount;
 
-    // Question [] public s_allQuestions;
+    address [] private s_allUsers;
 
     Stack3Badges private immutable i_stack3Badges;
 
@@ -144,7 +145,10 @@ contract Stack3 is Ownable {
         s_users[msg.sender].userAddress = msg.sender;
         s_users[msg.sender].uri = _uri;
 
+        s_allUsers.push(msg.sender);
+
         i_stack3Badges.mintUserBadge(msg.sender);
+
 
         emit NewUser (block.timestamp, newId, msg.sender);
     
@@ -461,5 +465,9 @@ contract Stack3 is Ownable {
             s_answerIdCounter - 1,
             s_commentIdCounter - 1
         );
+    }
+
+    function getAllUserAddresses() public view returns (address [] memory) {
+        return s_allUsers;
     } 
 }
