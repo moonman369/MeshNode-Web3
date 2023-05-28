@@ -13,6 +13,8 @@ import "./Stack3RareMintNFT.sol";
 
 contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownable {
 
+    event RewardClaimed (uint256 indexed timestamp, uint256 indexed id, address indexed winner);
+
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 5;
 
@@ -108,11 +110,12 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     function checkForUnclaimedRewards (address _user) public view returns (bool unclaimedRewardsPresent) {
         require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");
         address [] memory users = i_stack3.getAllUserAddresses();
-        if (!s_rareMintRewarded[_user] && i_rareNft.balanceOf(_user) <= 3) {
+        if (!s_rareMintRewarded[_user] && i_rareNft.balanceOf(_user) <= 1) {
             unchecked {
                 for (uint256 i = 0; i < s_randomWords.length; ) {
                     if (
-                        users[s_randomWords[i] % users.length] == _user
+                        users[s_randomWords[i] % users.length] == _user &&
+                        !s_rareMintRewarded[_user]
                     ) {
                         unclaimedRewardsPresent = true;
                     }
@@ -134,6 +137,21 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
             _user, 
             s_randomRewardsCounter++
         );
+
+        emit RewardClaimed(block.timestamp, s_randomRewardsCounter - 1, _user);
+    }
+
+    function getLatestWinners () public view returns (address [] memory) {
+        address [] memory winners = new address [] (s_randomWords.length);
+        address [] memory users = i_stack3.getAllUserAddresses();
+        unchecked {
+            for (uint256 i = 0; i < s_randomWords.length; ) {
+                address winner = users[s_randomWords[i] % users.length];
+                winners[i] = !s_rareMintRewarded[winner] ? winner : address(0);
+                i++;
+            }
+        }
+        return winners;
     }
 
     function getTimeTillNextUpkeep () public view returns (int256) {
