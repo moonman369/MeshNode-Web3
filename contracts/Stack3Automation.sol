@@ -13,23 +13,6 @@ import "./Stack3RareMintNFT.sol";
 
 contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownable {
 
-    uint256 public constant USER = 0;
-    uint256 public constant QUESTION_10 = 1;
-    uint256 public constant QUESTION_25 = 2;
-    uint256 public constant QUESTION_50 = 3;
-    uint256 public constant QUESTION_100 = 4;
-    uint256 public constant ANSWER_10 = 5;
-    uint256 public constant ANSWER_25 = 6;
-    uint256 public constant ANSWER_50 = 7;
-    uint256 public constant ANSWER_100 = 8;
-    uint256 public constant ANSWER_200 = 9;
-    uint256 public constant ANSWER_500 = 10;
-    uint256 public constant BEST_ANSWER_10 = 11;
-    uint256 public constant BEST_ANSWER_50 = 12;
-    uint256 public constant BEST_ANSWER_250 = 13;
-    uint256 public constant COMMENTS_100 = 14;
-    uint256 public constant COMMENTS_500 = 15;
-
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 5;
 
@@ -51,7 +34,6 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
 
     uint256 private s_randomRewardsCounter;
     address public s_winners;
-    
 
     constructor(
         address vrfCoordinatorV2,
@@ -93,7 +75,6 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         s_topUsers = _topUsers;
     }
 
-
     function performUpkeep(
         bytes calldata /* performData */
     ) external override {
@@ -126,11 +107,12 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
 
     function checkForUnclaimedRewards (address _user) public view returns (bool unclaimedRewardsPresent) {
         require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");
+        address [] memory users = i_stack3.getAllUserAddresses();
         if (!s_rareMintRewarded[_user] && i_rareNft.balanceOf(_user) <= 3) {
             unchecked {
                 for (uint256 i = 0; i < s_randomWords.length; ) {
                     if (
-                        s_topUsers[s_randomWords[i] % s_topUsers.length] == _user
+                        users[s_randomWords[i] % users.length] == _user
                     ) {
                         unclaimedRewardsPresent = true;
                     }

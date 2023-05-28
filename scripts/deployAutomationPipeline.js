@@ -13,6 +13,9 @@ const CALL_BACK_GAS = "2500000";
 const RARE_NFT_MAX_SUPPLY = 100;
 const RARE_NFT_DROP_INTERVAL = 10 * 60;
 
+// Change this value to valid Stack3.sol address during deployment';
+const STACK3_ADDRESS = "0x2ed832ba664535e5886b75d64c46eb9a228c2610";
+
 const main = async () => {
   const [deployer] = await ethers.getSigners();
   // Stack3RareMint
@@ -34,7 +37,8 @@ const main = async () => {
     CALL_BACK_GAS,
     RARE_NFT_DROP_INTERVAL,
     RARE_NFT_MAX_SUPPLY,
-    stack3RareNft.address
+    stack3RareNft.address,
+    STACK3_ADDRESS
   );
 };
 

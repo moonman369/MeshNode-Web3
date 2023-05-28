@@ -81,7 +81,8 @@ const deployStack3Automation = async (
   callbackGasLimit,
   dropInterval,
   maxSupply,
-  rareNftAddress
+  rareNftAddress,
+  stack3Address
 ) => {
   const deployer = await ethers.getSigner(deployerAddress);
 
@@ -94,7 +95,8 @@ const deployStack3Automation = async (
     callbackGasLimit,
     dropInterval,
     maxSupply,
-    rareNftAddress
+    rareNftAddress,
+    stack3Address
   );
 
   await stack3Automation.deployed();
