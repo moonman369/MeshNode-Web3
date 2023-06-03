@@ -118,6 +118,7 @@ contract Stack3 is Ownable {
     mapping (uint256 => Question) private s_questions;
     mapping (uint256 => Answer) private s_answers;
     mapping (uint256 => Comment) private s_comments;
+    mapping (string => uint256) private s_uriToQid;
     
     mapping (address => mapping (uint256 => int8)) public s_userVotedQuestion;
     mapping (address => mapping (uint256 => int8)) public s_userVotedAnswer;
@@ -179,6 +180,7 @@ contract Stack3 is Ownable {
         s_questions[newId].author = msg.sender;
         s_questions[newId].tags = _tags;
         s_questions[newId].uri = _uri;
+        s_uriToQid[_uri] = newId;
 
         for (uint256 i=0; i < _tags.length; i++) {
             // s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
@@ -465,6 +467,10 @@ contract Stack3 is Ownable {
             s_answerIdCounter - 1,
             s_commentIdCounter - 1
         );
+    }
+
+    function getQuestionByUri (string memory _uri) public view returns (uint256) {
+        return s_uriToQid[_uri];
     }
 
     function getAllUserAddresses() public view returns (address [] memory) {
