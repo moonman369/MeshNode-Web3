@@ -29,7 +29,7 @@ const main = async () => {
     RARE_NFT_BASE_URI
   );
 
-  await deployStack3Automation(
+  const stack3Automation = await deployStack3Automation(
     deployer.address,
     VRF_COO,
     SUB_ID,
@@ -39,6 +39,11 @@ const main = async () => {
     RARE_NFT_MAX_SUPPLY,
     stack3RareNft.address,
     STACK3_ADDRESS
+  );
+
+  await stack3RareNft.setApprovalForAll(stack3Automation.address, true);
+  console.log(
+    "Stack3Automation contract address has been approved for all Stack3RareMint Tokens.\n"
   );
 };
 
