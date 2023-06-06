@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./Stack3Badges.sol";
+import "./Stack3Automation.sol";
 
 
 contract Stack3 is Ownable {
@@ -27,11 +28,23 @@ contract Stack3 is Ownable {
         address indexed user
     );
 
+    event NewVote (
+        uint8 indexed _postType,
+        uint256 indexed id,
+        int8 _vote,
+        address indexed voter
+    );
+
     event NewAnswer (
         uint256 timestamp, 
         uint256 indexed id, 
         uint256 indexed qId, 
         address indexed user
+    );
+
+    event BestAnswerChosen (
+        uint256 qid,
+        uint256 aid
     );
 
     event NewComment (
@@ -44,7 +57,7 @@ contract Stack3 is Ownable {
 
 
     struct User {
-        uint256 tokenId;
+        uint256 id;
         uint256 bestAnswerCount;
         uint256 qUpvotes;
         uint256 aUpvotes;
@@ -52,6 +65,7 @@ contract Stack3 is Ownable {
         uint256 [] questions;
         uint256 [] answers;
         uint256 [] comments;
+        string uri;
     }
 
 
@@ -64,7 +78,7 @@ contract Stack3 is Ownable {
         uint256 [] tags;
         uint256 [] comments;
         uint256 [] answers;
-        // string uri;
+        string uri;
     }
 
     struct Answer {
@@ -75,7 +89,7 @@ contract Stack3 is Ownable {
         uint256 downvotes;
         address author;
         uint256 [] comments;
-        // string uri;
+        string uri;
     }
 
     struct Comment {
@@ -83,7 +97,7 @@ contract Stack3 is Ownable {
         PostType parentPostType;
         uint256 parentPostId;
         address author;
-        // string uri;
+        string uri;
     }
 
 
@@ -96,7 +110,7 @@ contract Stack3 is Ownable {
     uint256 private s_commentIdCounter;
     // uint256 private i_reservedTokensCount;
 
-    address [] private s_topUsers; 
+    address [] private s_allUsers;
 
     Stack3Badges private immutable i_stack3Badges;
 
@@ -104,11 +118,13 @@ contract Stack3 is Ownable {
     mapping (uint256 => Question) private s_questions;
     mapping (uint256 => Answer) private s_answers;
     mapping (uint256 => Comment) private s_comments;
+    mapping (string => uint256) private s_uriToQid;
     
-    mapping (address => mapping (uint256 => bool)) public s_userVotedQuestion;
-    mapping (address => mapping (uint256 => bool)) public s_userVotedAnswer;
+    mapping (address => mapping (uint256 => int8)) public s_userVotedQuestion;
+    mapping (address => mapping (uint256 => int8)) public s_userVotedAnswer;
     mapping (address => mapping (uint256 => uint256)) public s_userQuestionTagCounts;
-    mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
+    // mapping (address => mapping (uint256 => uint256)) public s_userAnswerTagCounts;
+    mapping (uint256 => mapping(uint256 => bool)) private s_tagsToQuestionsMapping;
     uint256 public s_initTagCount;
 
 
@@ -120,25 +136,40 @@ contract Stack3 is Ownable {
     }
 
     
-    function registerUser (bytes32 _secret) external {
+    function registerUser (string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (!_userExists(msg.sender), "Stack3: User already registered");
         uint256 newId = s_userIdCounter++;
         
-        s_users[msg.sender].tokenId = newId;
+        s_users[msg.sender].id = newId;
         s_users[msg.sender].userAddress = msg.sender;
+        s_users[msg.sender].uri = _uri;
+
+        s_allUsers.push(msg.sender);
 
         i_stack3Badges.mintUserBadge(msg.sender);
+
 
         emit NewUser (block.timestamp, newId, msg.sender);
     
     }
 
-
-    function postQuestion (uint256 [] memory _tags, bytes32 _secret) external {
+    // ================================= TEMP ================================= //
+    function setUserURI (string memory _newUri, bytes32 _secret) public {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
+        require (_userExists(msg.sender), "Stack3: User not registered");
+
+        s_users[msg.sender].uri = _newUri;
+    }
+    // ================================= TEMP ================================= //
+
+
+
+    function postQuestion (uint256 [] memory _tags, string memory _uri, bytes32 _secret) external {
+        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_tags.length <= 10, "Stack3: Max tag count is 10");
         
@@ -148,9 +179,17 @@ contract Stack3 is Ownable {
         s_questions[newId].id = newId;
         s_questions[newId].author = msg.sender;
         s_questions[newId].tags = _tags;
+        s_questions[newId].uri = _uri;
+        s_uriToQid[_uri] = newId;
 
         for (uint256 i=0; i < _tags.length; i++) {
-            s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
+            // s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
+            s_tagsToQuestionsMapping[_tags[i]][newId] = true;
+            i_stack3Badges.updateAndRewardTagBadges(
+                _tags[i], 
+                (s_userQuestionTagCounts[msg.sender][_tags[i]]++) + 1, 
+                msg.sender
+            );
         }
 
         i_stack3Badges.updateAndRewardBadges(0, s_users[msg.sender].questions.length, msg.sender);
@@ -160,30 +199,35 @@ contract Stack3 is Ownable {
 
     function voteQuestion (uint256 _qid, int8 _vote, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_qid), "Stack3: Invalid question id");
-        require (!s_userVotedQuestion[msg.sender][_qid], "Stack3: User has voted");
+        require (s_userVotedQuestion[msg.sender][_qid] == 0, "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote param");
+
+        address author = s_questions[_qid].author;
 
         if (_vote == -1) {
             s_questions[_qid].downvotes += 1;
+            s_userVotedQuestion[msg.sender][_qid] = -1;
         }
         else {
             s_questions[_qid].upvotes += 1;
-            s_users[msg.sender].qUpvotes += 1;
+            s_users[author].qUpvotes += 1;
+            s_userVotedQuestion[msg.sender][_qid] = 1;
         }
-    
-        s_userVotedQuestion[msg.sender][_qid] = true;
 
-        i_stack3Badges.updateAndRewardBadges(1, s_users[msg.sender].qUpvotes + 1, msg.sender);
+
+        i_stack3Badges.updateAndRewardBadges(1, s_users[author].qUpvotes + 1, author);
+
+        emit NewVote(uint8(PostType.QUESTION), _qid, _vote, msg.sender);
 
     }
 
 
-    function postAnswer (uint256 _qid, bytes32 _secret) external {
+    function postAnswer (uint256 _qid, string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_qid), "Stack3: Invalid question id");
 
@@ -195,10 +239,11 @@ contract Stack3 is Ownable {
         s_answers[newId].id = newId;
         s_answers[newId].qid = _qid;
         s_answers[newId].author = msg.sender;
+        s_answers[newId].uri = _uri;
 
-        for (uint256 i=0; i < s_questions[_qid].tags.length; i++) {
-            s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
-        }
+        // for (uint256 i=0; i < s_questions[_qid].tags.length; i++) {
+        //     s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
+        // }
 
         i_stack3Badges.updateAndRewardBadges(2, s_users[msg.sender].answers.length, msg.sender);
         emit NewAnswer(block.timestamp, newId, _qid, msg.sender);
@@ -206,30 +251,34 @@ contract Stack3 is Ownable {
 
     function voteAnswer (uint256 _aid, int8 _vote, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_answerExists(_aid), "Stack3: Invalid answer id");
-        require (!s_userVotedAnswer[msg.sender][_aid], "Stack3: User has already casted their vote.");
+        require (s_userVotedAnswer[msg.sender][_aid] == 0, "Stack3: User has voted");
         require (_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
+
+        address author = s_answers[_aid].author;
         
         if (_vote == -1) {
             s_answers[_aid].downvotes += 1;
+            s_userVotedAnswer[msg.sender][_aid] = -1;
         }
         else {
             s_answers[_aid].upvotes += 1;
-            s_users[msg.sender].aUpvotes += 1;
+            s_users[author].aUpvotes += 1;
+            s_userVotedAnswer[msg.sender][_aid] = 1;
         }
 
-        s_userVotedAnswer[msg.sender][_aid] = true;
 
-        i_stack3Badges.updateAndRewardBadges(3, s_users[msg.sender].aUpvotes + 1, msg.sender);
+        i_stack3Badges.updateAndRewardBadges(3, s_users[author].aUpvotes + 1, author);
 
+        emit NewVote(uint8(PostType.ANSWER), _aid, _vote, msg.sender);
     }
 
 
-    function chooseAsBestAnswer (uint256 _aid, bytes32 _secret) external {
+    function chooseBestAnswer (uint256 _aid, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_answerExists(_aid), "Stack3: Invalid answer id");
         uint256 qid = s_answers[_aid].qid;
@@ -241,14 +290,14 @@ contract Stack3 is Ownable {
         s_answers[_aid].isBestAnswer = true;
         s_users[s_answers[_aid].author].bestAnswerCount += 1;
 
-        i_stack3Badges.updateAndRewardBadges(2, s_users[s_answers[_aid].author].bestAnswerCount +1, s_answers[_aid].author);
+        i_stack3Badges.updateAndRewardBadges(4, s_users[s_answers[_aid].author].bestAnswerCount +1, s_answers[_aid].author);
     }
 
 
 
-    function postComment (uint8 _postType, uint256 _postId, bytes32 _secret) external {
+    function postComment (uint8 _postType, uint256 _postId, string memory _uri, bytes32 _secret) external {
         require(_verifySecret(_secret), "Stack3: Unverified source of call");
-        require (_callerIsWallet(msg.sender));
+        require (_callerIsWallet(msg.sender), "Stack3: Call from external contract.");
         require (_userExists(msg.sender), "Stack3: User not registered");
         require (_questionExists(_postId) || _answerExists(_postId), "Stack3: Invalid post id");
         require (_validPostType(_postType), "Stack3: Invalid post type");
@@ -264,7 +313,7 @@ contract Stack3 is Ownable {
 
         s_comments[newId].id = newId;
         s_comments[newId].parentPostType = PostType(_postType);
-
+        s_comments[newId].uri = _uri;
         s_comments[newId].parentPostId = _postId;
         s_comments[newId].author = msg.sender;
 
@@ -279,7 +328,7 @@ contract Stack3 is Ownable {
         return tx.origin == _addr;
     }
 
-    function _userExists (address _addr) internal view returns (bool) {
+    function _userExists (address _addr) public view returns (bool) {
         return s_users[_addr].userAddress != address(0);
     }
 
@@ -307,9 +356,19 @@ contract Stack3 is Ownable {
     }
 
     function _verifySecret (bytes32 _secret) internal view returns (bool) {
-        return MerkleProof.verify(s_merkleProof, s_merkleRoot, _secret);
+        return MerkleProof.verify(s_merkleProof, s_merkleRoot, keccak256(abi.encodePacked(_secret)));
     }
 
+    function getQuestionsByTag (uint256 _tid) public view returns (uint256 [] memory) {
+        uint256 [] memory taggedQuestions = new uint256 [] (s_questionIdCounter);
+        uint256 index = 0;
+        for (uint256 i = 1; i < s_questionIdCounter; i++) {
+            if (s_tagsToQuestionsMapping[_tid][i]) {
+                taggedQuestions[index++] = i;
+            }
+        }
+        return taggedQuestions;
+    }
 
 
     function getUserByAddress (address _userAddress) 
@@ -408,5 +467,13 @@ contract Stack3 is Ownable {
             s_answerIdCounter - 1,
             s_commentIdCounter - 1
         );
+    }
+
+    function getQuestionByUri (string memory _uri) public view returns (uint256) {
+        return s_uriToQid[_uri];
+    }
+
+    function getAllUserAddresses() public view returns (address [] memory) {
+        return s_allUsers;
     } 
 }

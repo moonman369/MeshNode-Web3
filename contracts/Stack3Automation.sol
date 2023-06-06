@@ -13,22 +13,7 @@ import "./Stack3RareMintNFT.sol";
 
 contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownable {
 
-    uint256 public constant USER = 0;
-    uint256 public constant QUESTION_10 = 1;
-    uint256 public constant QUESTION_25 = 2;
-    uint256 public constant QUESTION_50 = 3;
-    uint256 public constant QUESTION_100 = 4;
-    uint256 public constant ANSWER_10 = 5;
-    uint256 public constant ANSWER_25 = 6;
-    uint256 public constant ANSWER_50 = 7;
-    uint256 public constant ANSWER_100 = 8;
-    uint256 public constant ANSWER_200 = 9;
-    uint256 public constant ANSWER_500 = 10;
-    uint256 public constant BEST_ANSWER_10 = 11;
-    uint256 public constant BEST_ANSWER_50 = 12;
-    uint256 public constant BEST_ANSWER_250 = 13;
-    uint256 public constant COMMENTS_100 = 14;
-    uint256 public constant COMMENTS_500 = 15;
+    event RewardClaimed (uint256 indexed timestamp, uint256 indexed id, address indexed winner);
 
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 5;
@@ -44,11 +29,13 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     Stack3 private immutable i_stack3;
     uint256 private s_lastUpkeepTimestamp;
     uint256 private s_randomRewardsMaxSupply;
-    mapping (address => bool) s_rareMintReceived;
+    mapping (address => bool) s_rareMintRewarded;
+    // mapping (address => bool) s_claimed;
     address [] s_topUsers;
+    uint256 [] s_randomWords;
 
     uint256 private s_randomRewardsCounter;
-    
+    address public s_winners;
 
     constructor(
         address vrfCoordinatorV2,
@@ -90,7 +77,6 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         s_topUsers = _topUsers;
     }
 
-
     function performUpkeep(
         bytes calldata /* performData */
     ) external override {
@@ -117,24 +103,58 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         uint256, /* requestId */
         uint256[] memory randomWords
     ) internal override {
-
-        // address [] memory topUsers = s_topUsers;
-        
-        for (uint256 i = 0; i < randomWords.length; i++) {
-            address winner = s_topUsers[randomWords[i] % s_topUsers.length];
-
-            if(!s_rareMintReceived[winner] && i_rareNft.balanceOf(winner) <= 3) {
-                address collection = i_rareNft.collectionMintAddress();
-                s_rareMintReceived[winner] = true;
-                i_rareNft.transferFrom(collection, winner, s_randomRewardsCounter++);
-
-            }
-        }
+        s_randomWords = randomWords;
     }
 
-    
 
+    function checkForUnclaimedRewards (address _user) public view returns (bool unclaimedRewardsPresent) {
+        require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");
+        address [] memory users = i_stack3.getAllUserAddresses();
+        if (!s_rareMintRewarded[_user] && i_rareNft.balanceOf(_user) <= 1) {
+            unchecked {
+                for (uint256 i = 0; i < s_randomWords.length; ) {
+                    if (
+                        users[s_randomWords[i] % users.length] == _user &&
+                        !s_rareMintRewarded[_user]
+                    ) {
+                        unclaimedRewardsPresent = true;
+                    }
+                    i++;
+                }
+            }  
+        }
+        else {
+            unclaimedRewardsPresent = false;
+        } 
+    }
 
-    
+    function claimReward(address _user) external {
+        require (checkForUnclaimedRewards(_user), "Stack3RareMintNFT: No claimable rewards found.");
 
+        s_rareMintRewarded[_user] = true;
+        i_rareNft.transferFrom(
+            i_rareNft.collectionMintAddress(), 
+            _user, 
+            s_randomRewardsCounter++
+        );
+
+        emit RewardClaimed(block.timestamp, s_randomRewardsCounter - 1, _user);
+    }
+
+    function getLatestWinners () public view returns (address [] memory) {
+        address [] memory winners = new address [] (s_randomWords.length);
+        address [] memory users = i_stack3.getAllUserAddresses();
+        unchecked {
+            for (uint256 i = 0; i < s_randomWords.length; ) {
+                address winner = users[s_randomWords[i] % users.length];
+                winners[i] = !s_rareMintRewarded[winner] ? winner : address(0);
+                i++;
+            }
+        }
+        return winners;
+    }
+
+    function getTimeTillNextUpkeep () public view returns (int256) {
+        return int256(i_rareMintDropInterval - (block.timestamp - s_lastUpkeepTimestamp));
+    }
 }
