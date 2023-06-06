@@ -69,7 +69,6 @@ contract Stack3Badges is ERC1155, Ownable {
             _verifyCaller(msg.sender),
             "Stack3Badges: Caller is not Stack3 contract"
         );
-        require(_numPost <= 15);
         if (_reqType == 0) {
             // uint256 numQ = i_stack3.getUserByAddress(_user).questions.length;
             if (_numPost == 5) {
@@ -140,7 +139,6 @@ contract Stack3Badges is ERC1155, Ownable {
             "Stack3Badges: Caller is not Stack3 contract"
         );
         require(_tagId < s_maxTagId, "Stack3Badges: Invalid tag id");
-        require(_numTag <= 15);
         if (_numTag == 3) {
             _mint(_user, TAG_REWARDS_START + (_tagId * 4), 1, "");
         } else if (_numTag == 5) {

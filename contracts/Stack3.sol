@@ -187,18 +187,23 @@ contract Stack3 is Ownable {
         for (uint256 i = 0; i < _tags.length; i++) {
             // s_userQuestionTagCounts[msg.sender][_tags[i]] += 1;
             s_tagsToQuestionsMapping[_tags[i]][newId] = true;
-            i_stack3Badges.updateAndRewardTagBadges(
-                _tags[i],
-                (s_userQuestionTagCounts[msg.sender][_tags[i]]++) + 1,
+            s_userQuestionTagCounts[msg.sender][_tags[i]]++;
+            if ((s_userQuestionTagCounts[msg.sender][_tags[i]]) <= 15) {
+                i_stack3Badges.updateAndRewardTagBadges(
+                    _tags[i],
+                    s_userQuestionTagCounts[msg.sender][_tags[i]],
+                    msg.sender
+                );
+            }
+        }
+
+        if (s_users[msg.sender].questions.length <= 15) {
+            i_stack3Badges.updateAndRewardBadges(
+                0,
+                s_users[msg.sender].questions.length,
                 msg.sender
             );
         }
-
-        i_stack3Badges.updateAndRewardBadges(
-            0,
-            s_users[msg.sender].questions.length,
-            msg.sender
-        );
 
         emit NewQuestion(block.timestamp, newId, msg.sender);
     }
