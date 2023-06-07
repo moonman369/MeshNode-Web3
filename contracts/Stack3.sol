@@ -342,6 +342,8 @@ contract Stack3 is Ownable {
             s_users[s_answers[_aid].author].bestAnswerCount + 1,
             s_answers[_aid].author
         );
+
+        emit BestAnswerChosen(qid, _aid);
     }
 
     function postComment(

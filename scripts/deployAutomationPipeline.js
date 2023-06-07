@@ -5,16 +5,16 @@ const {
 } = require("./deployFunctions");
 
 const GAS_LANE =
-  "0x354d2f95da55398f44b7cff77da56283d9c6c829a4bdf1bbcaf2ad6a4d081f61";
-const VRF_COO = "0x2ed832ba664535e5886b75d64c46eb9a228c2610";
-const SUB_ID = 658;
+  "0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f";
+const VRF_COO = "0x7a1bac17ccc5b313516c5e16fb24f7659aa5ebed";
+const SUB_ID = 4746;
 const CALL_BACK_GAS = "2500000";
 
 const RARE_NFT_MAX_SUPPLY = 100;
-const RARE_NFT_DROP_INTERVAL = 10 * 60;
+const RARE_NFT_DROP_INTERVAL = 5 * 60;
 
 // Change this value to valid Stack3.sol address during deployment';
-const STACK3_ADDRESS = "0x2ed832ba664535e5886b75d64c46eb9a228c2610";
+const STACK3_ADDRESS = "0x5bdaf907D2c794D9Fa5D0bee5884191ADE9475A3";
 
 const main = async () => {
   const [deployer] = await ethers.getSigners();
@@ -24,7 +24,7 @@ const main = async () => {
 
   const stack3RareNft = await deployStack3RareNFT(
     deployer.address,
-    1000,
+    100,
     COLLECTION_MINT_ADDRESS,
     RARE_NFT_BASE_URI
   );
@@ -52,3 +52,10 @@ main()
     process.exit(0);
   })
   .catch((error) => console.error(error));
+
+/**
+ * badges: 0x24C11d6d347DE57Bb435FFd66Ec7ECb960F11593
+ * stack3: 0x5bdaf907D2c794D9Fa5D0bee5884191ADE9475A3
+ * rare: 0x0d27b974Ee1B3a187C025656fABBC690e9463F01
+ * auto: 0xb58863328Fa284a733aDF29a6D8f96F89a6b2eF1
+ */

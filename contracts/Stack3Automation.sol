@@ -16,7 +16,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     event RewardClaimed (uint256 indexed timestamp, uint256 indexed id, address indexed winner);
 
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
-    uint32 private constant NUM_WORDS = 5;
+    uint32 private constant NUM_WORDS = 1;
 
 
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
@@ -30,12 +30,14 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     uint256 private s_lastUpkeepTimestamp;
     uint256 private s_randomRewardsMaxSupply;
     mapping (address => bool) s_rareMintRewarded;
+    mapping (address => bool) s_unclaimedPresent;
+    mapping (address => uint256) public s_userToRareTokenId;
     // mapping (address => bool) s_claimed;
-    address [] s_topUsers;
+    address [] private s_winners;
+    // bool s_allCurrentlyRewarded;
     uint256 [] s_randomWords;
 
     uint256 private s_randomRewardsCounter;
-    address public s_winners;
 
     constructor(
         address vrfCoordinatorV2,
@@ -68,13 +70,16 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     {
         bool timePassed = block.timestamp > (s_lastUpkeepTimestamp + i_rareMintDropInterval);
         bool canDropRandom = s_randomRewardsCounter < s_randomRewardsMaxSupply;
-        upkeepNeeded = timePassed && canDropRandom;
+        address [] memory users = i_stack3.getAllUserAddresses();
+        bool allCurrentlyRewarded = true;
+        for (uint256 i=0; i < users.length; i++) {
+            if (i_rareNft.balanceOf(users[i]) < 1) {
+                allCurrentlyRewarded = false;
+                break;
+            }
+        }
+        upkeepNeeded = timePassed && canDropRandom && !allCurrentlyRewarded;
         return (upkeepNeeded, "0x0");
-    }
-
-
-    function setTopUsers (address [] memory _topUsers) external onlyOwner {
-        s_topUsers = _topUsers;
     }
 
     function performUpkeep(
@@ -82,6 +87,8 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     ) external override {
 
         (bool upkeepNeeded, ) = checkUpkeep("");
+
+
 
         if(upkeepNeeded) {
             i_vrfCoordinator.requestRandomWords(
@@ -103,55 +110,56 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         uint256, /* requestId */
         uint256[] memory randomWords
     ) internal override {
-        s_randomWords = randomWords;
+
+        uint256 random = randomWords[0];
+
+        address [] memory users = i_stack3.getAllUserAddresses();
+        uint256 index = uint256(keccak256(abi.encodePacked(random, block.timestamp))) % users.length;
+        
+        unchecked {
+            for (uint256 i = 0; i < 10; ) {
+                random /= 10;
+                index = uint256(keccak256(abi.encodePacked(random, i, block.timestamp))) % users.length;
+                if (!s_rareMintRewarded[users[index]] || i_rareNft.balanceOf(users[index]) < 1) {
+                    break;
+                }
+                i++;
+            }
+        }
+        
+        if (i_rareNft.balanceOf(users[index]) < 1) {
+            s_winners.push(users[index]);
+            s_unclaimedPresent[users[index]] = true;
+            s_rareMintRewarded[users[index]] = true;
+            s_userToRareTokenId[users[index]] = s_randomRewardsCounter + 1;
+            s_randomRewardsCounter++;
+        }
     }
 
 
-    function checkForUnclaimedRewards (address _user) public view returns (bool unclaimedRewardsPresent) {
-        require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");
-        address [] memory users = i_stack3.getAllUserAddresses();
-        if (!s_rareMintRewarded[_user] && i_rareNft.balanceOf(_user) <= 1) {
-            unchecked {
-                for (uint256 i = 0; i < s_randomWords.length; ) {
-                    if (
-                        users[s_randomWords[i] % users.length] == _user &&
-                        !s_rareMintRewarded[_user]
-                    ) {
-                        unclaimedRewardsPresent = true;
-                    }
-                    i++;
-                }
-            }  
-        }
-        else {
-            unclaimedRewardsPresent = false;
-        } 
+    function checkForUnclaimedRewards (address _user) public view returns (bool) {
+        require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");   
+        return s_unclaimedPresent[_user];
     }
 
     function claimReward(address _user) external {
         require (checkForUnclaimedRewards(_user), "Stack3RareMintNFT: No claimable rewards found.");
 
+        s_unclaimedPresent[_user] = false;
+
         s_rareMintRewarded[_user] = true;
+        // s_userToRareTokenId[_user] = s_randomRewardsCounter;
         i_rareNft.transferFrom(
             i_rareNft.collectionMintAddress(), 
             _user, 
-            s_randomRewardsCounter++
+            s_randomRewardsCounter
         );
 
-        emit RewardClaimed(block.timestamp, s_randomRewardsCounter - 1, _user);
+        emit RewardClaimed(block.timestamp, s_randomRewardsCounter, _user);
     }
 
     function getLatestWinners () public view returns (address [] memory) {
-        address [] memory winners = new address [] (s_randomWords.length);
-        address [] memory users = i_stack3.getAllUserAddresses();
-        unchecked {
-            for (uint256 i = 0; i < s_randomWords.length; ) {
-                address winner = users[s_randomWords[i] % users.length];
-                winners[i] = !s_rareMintRewarded[winner] ? winner : address(0);
-                i++;
-            }
-        }
-        return winners;
+        return s_winners;
     }
 
     function getTimeTillNextUpkeep () public view returns (int256) {
