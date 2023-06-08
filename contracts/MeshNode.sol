@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "./Stack3Badges.sol";
-import "./Stack3Automation.sol";
+import "./MeshNodeBadges.sol";
+import "./MeshNodeAutomation.sol";
 
-contract Stack3 is Ownable {
+contract MeshNode is Ownable {
     enum PostType {
         QUESTION,
         ANSWER
@@ -100,7 +100,7 @@ contract Stack3 is Ownable {
 
     address[] private s_allUsers;
 
-    Stack3Badges private immutable i_stack3Badges;
+    MeshNodeBadges private immutable i_meshNodeBadges;
 
     mapping(address => User) private s_users;
     mapping(uint256 => Question) private s_questions;
@@ -118,23 +118,23 @@ contract Stack3 is Ownable {
     uint256 public s_initTagCount;
 
     constructor(
-        address _stack3BadgesAddress,
+        address _meshNodeBadgesAddress,
         uint256 _initTagCount,
         bytes32 _merkleRoot
     ) {
-        i_stack3Badges = Stack3Badges(_stack3BadgesAddress);
+        i_meshNodeBadges = MeshNodeBadges(_meshNodeBadgesAddress);
         _initCounters(1);
         s_initTagCount = _initTagCount;
         s_merkleRoot = _merkleRoot;
     }
 
     function registerUser(string memory _uri, bytes32 _secret) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNode: Call from external contract."
         );
-        require(!_userExists(msg.sender), "Stack3: User already registered");
+        require(!_userExists(msg.sender), "MeshNode: User already registered");
         uint256 newId = s_userIdCounter++;
 
         s_users[msg.sender].id = newId;
@@ -143,19 +143,19 @@ contract Stack3 is Ownable {
 
         s_allUsers.push(msg.sender);
 
-        i_stack3Badges.mintUserBadge(msg.sender);
+        i_meshNodeBadges.mintUserBadge(msg.sender);
 
         emit NewUser(block.timestamp, newId, msg.sender);
     }
 
     // ================================= TEMP ================================= //
     function setUserURI(string memory _newUri, bytes32 _secret) public {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
 
         s_users[msg.sender].uri = _newUri;
     }
@@ -167,13 +167,13 @@ contract Stack3 is Ownable {
         string memory _uri,
         bytes32 _secret
     ) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNodeMeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
-        require(_tags.length <= 10, "Stack3: Max tag count is 10");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
+        require(_tags.length <= 10, "MeshNode: Max tag count is 10");
 
         uint256 newId = s_questionIdCounter++;
         s_users[msg.sender].questions.push(newId);
@@ -189,7 +189,7 @@ contract Stack3 is Ownable {
             s_tagsToQuestionsMapping[_tags[i]][newId] = true;
             s_userQuestionTagCounts[msg.sender][_tags[i]]++;
             if ((s_userQuestionTagCounts[msg.sender][_tags[i]]) <= 15) {
-                i_stack3Badges.updateAndRewardTagBadges(
+                i_meshNodeBadges.updateAndRewardTagBadges(
                     _tags[i],
                     s_userQuestionTagCounts[msg.sender][_tags[i]],
                     msg.sender
@@ -198,7 +198,7 @@ contract Stack3 is Ownable {
         }
 
         if (s_users[msg.sender].questions.length <= 15) {
-            i_stack3Badges.updateAndRewardBadges(
+            i_meshNodeBadges.updateAndRewardBadges(
                 0,
                 s_users[msg.sender].questions.length,
                 msg.sender
@@ -209,18 +209,18 @@ contract Stack3 is Ownable {
     }
 
     function voteQuestion(uint256 _qid, int8 _vote, bytes32 _secret) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
-        require(_questionExists(_qid), "Stack3: Invalid question id");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
+        require(_questionExists(_qid), "MeshNode: Invalid question id");
         require(
             s_userVotedQuestion[msg.sender][_qid] == 0,
-            "Stack3: User has voted"
+            "MeshNode: User has voted"
         );
-        require(_vote == 1 || _vote == -1, "Stack3: Invalid vote param");
+        require(_vote == 1 || _vote == -1, "MeshNode: Invalid vote param");
 
         address author = s_questions[_qid].author;
 
@@ -233,7 +233,7 @@ contract Stack3 is Ownable {
             s_userVotedQuestion[msg.sender][_qid] = 1;
         }
 
-        i_stack3Badges.updateAndRewardBadges(
+        i_meshNodeBadges.updateAndRewardBadges(
             1,
             s_users[author].qUpvotes + 1,
             author
@@ -247,13 +247,13 @@ contract Stack3 is Ownable {
         string memory _uri,
         bytes32 _secret
     ) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
-        require(_questionExists(_qid), "Stack3: Invalid question id");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
+        require(_questionExists(_qid), "MeshNode: Invalid question id");
 
         uint256 newId = s_answerIdCounter++;
         s_users[msg.sender].answers.push(newId);
@@ -269,7 +269,7 @@ contract Stack3 is Ownable {
         //     s_userAnswerTagCounts[msg.sender][s_questions[_qid].tags[i]] += 1;
         // }
 
-        i_stack3Badges.updateAndRewardBadges(
+        i_meshNodeBadges.updateAndRewardBadges(
             2,
             s_users[msg.sender].answers.length,
             msg.sender
@@ -278,18 +278,18 @@ contract Stack3 is Ownable {
     }
 
     function voteAnswer(uint256 _aid, int8 _vote, bytes32 _secret) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
-        require(_answerExists(_aid), "Stack3: Invalid answer id");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
+        require(_answerExists(_aid), "MeshNode: Invalid answer id");
         require(
             s_userVotedAnswer[msg.sender][_aid] == 0,
-            "Stack3: User has voted"
+            "MeshNode: User has voted"
         );
-        require(_vote == 1 || _vote == -1, "Stack3: Invalid vote parameter");
+        require(_vote == 1 || _vote == -1, "MeshNode: Invalid vote parameter");
 
         address author = s_answers[_aid].author;
 
@@ -302,7 +302,7 @@ contract Stack3 is Ownable {
             s_userVotedAnswer[msg.sender][_aid] = 1;
         }
 
-        i_stack3Badges.updateAndRewardBadges(
+        i_meshNodeBadges.updateAndRewardBadges(
             3,
             s_users[author].aUpvotes + 1,
             author
@@ -312,32 +312,32 @@ contract Stack3 is Ownable {
     }
 
     function chooseBestAnswer(uint256 _aid, bytes32 _secret) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
-        require(_answerExists(_aid), "Stack3: Invalid answer id");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
+        require(_answerExists(_aid), "MeshNode: Invalid answer id");
         uint256 qid = s_answers[_aid].qid;
         require(
             s_questions[qid].author == msg.sender,
-            "Stack3: Caller is not author"
+            "MeshNode: Caller is not author"
         );
         require(
             !s_questions[qid].bestAnswerChosen,
-            "Stack3: Best answer for question already chosen"
+            "StacMeshNodek3: Best answer for question already chosen"
         );
         require(
             !s_answers[_aid].isBestAnswer,
-            "Stack3: This answer is chosen as the best"
+            "MeshNode: This answer is chosen as the best"
         );
 
         s_questions[qid].bestAnswerChosen = true;
         s_answers[_aid].isBestAnswer = true;
         s_users[s_answers[_aid].author].bestAnswerCount += 1;
 
-        i_stack3Badges.updateAndRewardBadges(
+        i_meshNodeBadges.updateAndRewardBadges(
             4,
             s_users[s_answers[_aid].author].bestAnswerCount + 1,
             s_answers[_aid].author
@@ -352,17 +352,17 @@ contract Stack3 is Ownable {
         string memory _uri,
         bytes32 _secret
     ) external {
-        require(_verifySecret(_secret), "Stack3: Unverified source of call");
+        require(_verifySecret(_secret), "MeshNode: Unverified source of call");
         require(
             _callerIsWallet(msg.sender),
-            "Stack3: Call from external contract."
+            "MeshNodeMeshNode: Call from external contract."
         );
-        require(_userExists(msg.sender), "Stack3: User not registered");
+        require(_userExists(msg.sender), "MeshNode: User not registered");
         require(
             _questionExists(_postId) || _answerExists(_postId),
-            "Stack3: Invalid post id"
+            "MeshNode: Invalid post id"
         );
-        require(_validPostType(_postType), "Stack3: Invalid post type");
+        require(_validPostType(_postType), "MeshNode: Invalid post type");
 
         uint256 newId = s_commentIdCounter++;
 
@@ -386,7 +386,7 @@ contract Stack3 is Ownable {
             msg.sender
         );
 
-        i_stack3Badges.updateAndRewardBadges(
+        i_meshNodeBadges.updateAndRewardBadges(
             5,
             s_users[msg.sender].comments.length,
             msg.sender
@@ -449,24 +449,24 @@ contract Stack3 is Ownable {
     function getUserByAddress(
         address _userAddress
     ) public view returns (User memory) {
-        require(_userExists(_userAddress), "Stack3: User not registered");
+        require(_userExists(_userAddress), "MeshNode: User not registered");
         return s_users[_userAddress];
     }
 
     function getQuestionById(
         uint256 _id
     ) public view returns (Question memory) {
-        require(_questionExists(_id), "Stack3: Invalid question id");
+        require(_questionExists(_id), "MeshNode: Invalid question id");
         return s_questions[_id];
     }
 
     function getAnswerById(uint256 _id) public view returns (Answer memory) {
-        require(_answerExists(_id), "Stack3: Invalid answer id");
+        require(_answerExists(_id), "MeshNode: Invalid answer id");
         return s_answers[_id];
     }
 
     function getCommentById(uint256 _id) public view returns (Comment memory) {
-        require(_commentExists(_id), "Stack3: Invalid comment id");
+        require(_commentExists(_id), "MeshNode: Invalid comment id");
         return s_comments[_id];
     }
 

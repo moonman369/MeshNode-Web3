@@ -1,7 +1,7 @@
-const { ethers } = require('hardhat');
-require('dotenv').config();
-const { requestMerkleSecret } = require('../merkle/setMerkleTree');
-const { deployStack3, deployStack3Badges } = require('./deployFunctions');
+const { ethers } = require("hardhat");
+require("dotenv").config();
+const { requestMerkleSecret } = require("../merkle/setMerkleTree");
+const { deployMeshNode, deployMeshNodeBadges } = require("./deployFunctions");
 
 const main = async () => {
   const [deployer] = await ethers.getSigners();
@@ -19,10 +19,10 @@ const main = async () => {
 
   // Stack3Badges
   const BADGES_BASE_URI =
-    'https://hackathon.mypinata.cloud/ipfs/QmPLtEYjGY7LfkWTi6CiWspK5MRY5cnQb2t3cimyqAVHHp/';
+    "https://hackathon.mypinata.cloud/ipfs/QmPLtEYjGY7LfkWTi6CiWspK5MRY5cnQb2t3cimyqAVHHp/";
   const INIT_TAG_COUNT = 20;
 
-  const stack3Badges = await deployStack3Badges(
+  const meshNodeBadges = await deployMeshNodeBadges(
     deployer.address,
     INIT_TAG_COUNT,
     BADGES_BASE_URI
@@ -30,28 +30,28 @@ const main = async () => {
 
   // Stack3
   const { merkleRoot, hashedSecret } = requestMerkleSecret(
-    process.env.SECRET_PHRASE || 'Stack3_Merkle_Secret_Seed_Phrase'
+    process.env.SECRET_PHRASE || "Stack3_Merkle_Secret_Seed_Phrase"
   );
-  const stack3 = await deployStack3(
+  const meshNode = await deployMeshNode(
     deployer.address,
-    stack3Badges.address,
+    meshNodeBadges.address,
     INIT_TAG_COUNT,
     merkleRoot
   );
 
-  const tx = await stack3Badges
+  const tx = await meshNodeBadges
     .connect(deployer)
-    .setStack3Address(stack3.address);
+    .setMeshNodeAddress(meshNode.address);
   await tx.wait();
   console.log(
-    'Stack3 address has been set to Stack3Badges contract successfully.'
+    "MeshNode address has been set to MeshNodeBadges contract successfully."
   );
   console.log(
-    `Stack3 address from Stack3Badges: ${await stack3Badges.s_stack3Address()}\n\n`
+    `MeshNode address from MeshNodeBadges: ${await meshNodeBadges.s_meshNodeAddress()}\n\n`
   );
 
   console.log(
-    `Hashed Secret (bytes32) for calling Stack3 functions =====> ${hashedSecret}\n`
+    `Hashed Secret (bytes32) for calling MeshNode functions =====> ${hashedSecret}\n`
   );
 
   // await deployStack3(deployer.address, deployer.address, "BASE_URI", 0);

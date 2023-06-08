@@ -8,10 +8,10 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Stack3.sol";
-import "./Stack3RareMintNFT.sol";
+import "./MeshNode.sol";
+import "./MeshNodeRareMintNFT.sol";
 
-contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownable {
+contract MeshNodeAutomation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownable {
 
     event RewardClaimed (uint256 indexed timestamp, uint256 indexed id, address indexed winner);
 
@@ -25,8 +25,8 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     uint32 private immutable i_callbackGasLimit;
     
     uint256 private immutable i_rareMintDropInterval;
-    Stack3RareMintNFT private immutable i_rareNft;
-    Stack3 private immutable i_stack3;
+    MeshNodeRareMintNFT private immutable i_rareNft;
+    MeshNode private immutable i_meshNode;
     uint256 private s_lastUpkeepTimestamp;
     uint256 private s_randomRewardsMaxSupply;
     mapping (address => bool) s_rareMintRewarded;
@@ -47,15 +47,15 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         uint256 _rareMintDropInterval,
         uint256 _randomRewardsMaxSupply,
         address _rareNftAddress,
-        address _stack3Address
+        address _meshNodeAddress
     ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
         i_rareMintDropInterval = _rareMintDropInterval;
-        i_rareNft = Stack3RareMintNFT(_rareNftAddress);
-        i_stack3 = Stack3(_stack3Address);
+        i_rareNft = MeshNodeRareMintNFT(_rareNftAddress);
+        i_meshNode = MeshNode(_meshNodeAddress);
         s_lastUpkeepTimestamp = block.timestamp;
         s_randomRewardsMaxSupply = _randomRewardsMaxSupply;
     }
@@ -68,7 +68,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         override
         returns (bool upkeepNeeded, bytes memory /* performData */)
     {
-        address [] memory users = i_stack3.getAllUserAddresses();
+        address [] memory users = i_meshNode.getAllUserAddresses();
 
         bool timePassed = block.timestamp > (s_lastUpkeepTimestamp + i_rareMintDropInterval);
         bool noUsers = users.length == 0;
@@ -121,7 +121,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
 
         uint256 random = randomWords[0];
 
-        address [] memory users = i_stack3.getAllUserAddresses();
+        address [] memory users = i_meshNode.getAllUserAddresses();
         uint256 index = uint256(keccak256(abi.encodePacked(random, block.timestamp))) % users.length;
         
         unchecked {
@@ -146,12 +146,12 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
 
 
     function checkForUnclaimedRewards (address _user) public view returns (bool) {
-        require (_user != address(0), "Stack3RareMintNFT: Cannot reward null address");   
+        require (_user != address(0), "MeshNodeAutomation: Cannot reward null address");   
         return s_unclaimedPresent[_user];
     }
 
     function claimReward(address _user) external {
-        require (checkForUnclaimedRewards(_user), "Stack3RareMintNFT: No claimable rewards found.");
+        require (checkForUnclaimedRewards(_user), "MeshNodeAutomation: No claimable rewards found.");
 
         s_unclaimedPresent[_user] = false;
 

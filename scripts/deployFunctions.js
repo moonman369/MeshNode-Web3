@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 require("dotenv").config();
 // const { requestMerkleSecret } = require("../merkle/setMerkleTree");
 
-const deployStack3RareNFT = async (
+const deployMeshNodeRareNFT = async (
   deployerAddress,
   maxSupply,
   collectionMintAddress,
@@ -10,70 +10,68 @@ const deployStack3RareNFT = async (
 ) => {
   const deployer = await ethers.getSigner(deployerAddress);
 
-  const Stack3RareMintNFT = await ethers.getContractFactory(
-    "Stack3RareMintNFT"
+  const MeshNodeRareMintNFT = await ethers.getContractFactory(
+    "MeshNodeRareMintNFT"
   );
 
-  const stack3RareMintNft = await Stack3RareMintNFT.connect(deployer).deploy(
-    maxSupply,
-    collectionMintAddress,
-    baseUri
-  );
+  const meshNodeRareMintNft = await MeshNodeRareMintNFT.connect(
+    deployer
+  ).deploy(maxSupply, collectionMintAddress, baseUri);
 
-  await stack3RareMintNft.deployed();
+  await meshNodeRareMintNft.deployed();
 
   console.log(
-    `Stack3RareMintNFT contract has been deployed at address: ${stack3RareMintNft.address}\n`
+    `MeshNodeRareMintNFT contract has been deployed at address: ${meshNodeRareMintNft.address}\n`
   );
 
-  return stack3RareMintNft;
+  return meshNodeRareMintNft;
 };
 
-const deployStack3Badges = async (deployerAddress, maxTagCount, baseUri) => {
+const deployMeshNodeBadges = async (deployerAddress, maxTagCount, baseUri) => {
   const deployer = await ethers.getSigner(deployerAddress);
 
-  const Stack3Badges = await ethers.getContractFactory("Stack3Badges");
+  const MeshNodeBadges = await ethers.getContractFactory("MeshNodeBadges");
 
-  const stack3Badges = await Stack3Badges.connect(deployer).deploy(
+  const meshNodeBadges = await MeshNodeBadges.connect(deployer).deploy(
     maxTagCount,
     baseUri
   );
 
-  await stack3Badges.deployed();
+  await meshNodeBadges.deployed();
 
   console.log(
-    `Stack3Badges contract has been deployed at address: ${stack3Badges.address}\n`
+    `MeshNodeBadges contract has been deployed at address: ${meshNodeBadges.address}\n`
   );
 
-  return stack3Badges;
+  return meshNodeBadges;
 };
 
-const deployStack3 = async (
+const deployMeshNode = async (
   deployerAddress,
-  stack3BadgesAddress,
+  meshNodeBadgesAddress,
   initTagCount,
   merkleRoot
 ) => {
   const deployer = await ethers.getSigner(deployerAddress);
 
-  const Stack3 = await ethers.getContractFactory("Stack3");
+  const MeshNode = await ethers.getContractFactory("MeshNode");
 
-  const stack3 = await Stack3.connect(deployer).deploy(
-    stack3BadgesAddress,
+  const meshNode = await MeshNode.connect(deployer).deploy(
+    meshNodeBadgesAddress,
     initTagCount,
     merkleRoot
   );
 
-  await stack3.deployed();
+  await meshNode.deployed();
 
   console.log(
-    `Stack3 contract has been deployed at address: ${stack3.address}\n`
+    `MeshNode contract has been deployed at address: ${meshNode.address}\n`
   );
 
-  return stack3;
+  return meshNode;
 };
 
-const deployStack3Automation = async (
+const deployMeshNodeAutomation = async (
   deployerAddress,
   vrfCoordinatorV2,
   subId,
@@ -82,13 +80,15 @@ const deployStack3Automation = async (
   dropInterval,
   maxSupply,
   rareNftAddress,
-  stack3Address
+  meshNodeAddress
 ) => {
   const deployer = await ethers.getSigner(deployerAddress);
 
-  const Stack3Automation = await ethers.getContractFactory("Stack3Automation");
+  const MeshNodeAutomation = await ethers.getContractFactory(
+    "MeshNodeAutomation"
+  );
 
-  const stack3Automation = await Stack3Automation.connect(deployer).deploy(
+  const meshNodeAutomation = await MeshNodeAutomation.connect(deployer).deploy(
     vrfCoordinatorV2,
     subId,
     gasLane,
@@ -96,21 +96,21 @@ const deployStack3Automation = async (
     dropInterval,
     maxSupply,
     rareNftAddress,
-    stack3Address
+    meshNodeAddress
   );
 
-  await stack3Automation.deployed();
+  await meshNodeAutomation.deployed();
 
   console.log(
-    `Stack3Automation contract has been deployed at address: ${stack3Automation.address}\n\n`
+    `MeshNodeAutomation contract has been deployed at address: ${meshNodeAutomation.address}\n\n`
   );
 
-  return stack3Automation;
+  return meshNodeAutomation;
 };
 
 module.exports = {
-  deployStack3,
-  deployStack3Badges,
-  deployStack3RareNFT,
-  deployStack3Automation,
+  deployMeshNode,
+  deployMeshNodeBadges,
+  deployMeshNodeRareNFT,
+  deployMeshNodeAutomation,
 };

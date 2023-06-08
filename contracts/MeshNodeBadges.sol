@@ -5,9 +5,9 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "./Stack3.sol";
+import "./MeshNode.sol";
 
-contract Stack3Badges is ERC1155, Ownable {
+contract MeshNodeBadges is ERC1155, Ownable {
     using Strings for uint256;
 
     uint256 public constant USER = 0;
@@ -39,23 +39,21 @@ contract Stack3Badges is ERC1155, Ownable {
 
     string private s_baseUri;
     uint256 private s_maxTagId;
-    // Stack3 private immutable i_stack3;
-    address public s_stack3Address;
+    address public s_meshNodeAddress;
 
     constructor(uint256 _maxTagId, string memory _baseUri) ERC1155(_baseUri) {
-        // i_stack3 = Stack3(_stack3Address);
         s_maxTagId = _maxTagId;
         s_baseUri = _baseUri;
     }
 
-    function setStack3Address(address _stack3Address) external onlyOwner {
-        s_stack3Address = _stack3Address;
+    function setMeshNodeAddress(address _meshNodeAddress) external onlyOwner {
+        s_meshNodeAddress = _meshNodeAddress;
     }
 
     function mintUserBadge(address _user) external {
         require(
             _verifyCaller(msg.sender),
-            "Stack3Badges: Caller is not Stack3 contract"
+            "MeshNodeBadges: Caller is not MeshNode contract"
         );
         _mint(_user, USER, 1, "");
     }
@@ -67,10 +65,9 @@ contract Stack3Badges is ERC1155, Ownable {
     ) external {
         require(
             _verifyCaller(msg.sender),
-            "Stack3Badges: Caller is not Stack3 contract"
+            "MeshNodeBadges: Caller is not MeshNode contract"
         );
         if (_reqType == 0) {
-            // uint256 numQ = i_stack3.getUserByAddress(_user).questions.length;
             if (_numPost == 5) {
                 // Q posts
                 _mint(_user, QUESTION_5, 1, "");
@@ -89,9 +86,6 @@ contract Stack3Badges is ERC1155, Ownable {
                 _mint(_user, UPVOTE_QUESTION_15, 1, "");
             }
         } else if (_reqType == 2) {
-            // A post
-            // uint256 numA = i_stack3.getUserByAddress(_user).answers.length;
-            // uint256 bestAnswerCount = i_stack3.getUserByAddress(_user).bestAnswerCount;
             if (_numPost == 5) {
                 _mint(_user, ANSWER_5, 1, "");
             } else if (_numPost == 10) {
@@ -117,7 +111,6 @@ contract Stack3Badges is ERC1155, Ownable {
                 _mint(_user, BEST_ANSWER_15, 1, "");
             }
         } else {
-            // uint256 numC = i_stack3.getUserByAddress(_user).comments.length;
             if (_numPost == 5) {
                 _mint(_user, COMMENTS_5, 1, "");
             } else if (_numPost == 10) {
@@ -133,12 +126,11 @@ contract Stack3Badges is ERC1155, Ownable {
         uint256 _numTag,
         address _user /*, bytes32 _secret*/
     ) external {
-        // require(_verifySecret(_secret), "Stack3Badges: Unverified source of call");
         require(
             _verifyCaller(msg.sender),
-            "Stack3Badges: Caller is not Stack3 contract"
+            "MeshNodeBadges: Caller is not MeshNode contract"
         );
-        require(_tagId < s_maxTagId, "Stack3Badges: Invalid tag id");
+        require(_tagId < s_maxTagId, "MeshNodeBadges: Invalid tag id");
         if (_numTag == 3) {
             _mint(_user, TAG_REWARDS_START + (_tagId * 4), 1, "");
         } else if (_numTag == 5) {
@@ -151,13 +143,13 @@ contract Stack3Badges is ERC1155, Ownable {
     }
 
     function _verifyCaller(address _caller) internal view returns (bool) {
-        return _caller == s_stack3Address;
+        return _caller == s_meshNodeAddress;
     }
 
     function uri(uint256 _id) public view override returns (string memory) {
         require(
             _id <= TAG_REWARDS_START + s_maxTagId * 4,
-            "Stack3Badges: Invalid token id"
+            "MeshNodeBadges: Invalid token id"
         );
         return string(abi.encodePacked(s_baseUri, _id.toString(), ".json"));
     }
@@ -165,7 +157,7 @@ contract Stack3Badges is ERC1155, Ownable {
     function tokenURI(uint256 _id) public view returns (string memory) {
         require(
             _id <= TAG_REWARDS_START + s_maxTagId * 4,
-            "Stack3Badges: Invalid token id"
+            "MeshNodeBadges: Invalid token id"
         );
         return string(abi.encodePacked(s_baseUri, _id.toString(), ".json"));
     }
@@ -173,7 +165,7 @@ contract Stack3Badges is ERC1155, Ownable {
     function getUserBadges(
         address _user
     ) public view returns (uint256[] memory) {
-        require(_user != address(0), "Stack3Badges: Null address passed");
+        require(_user != address(0), "MeshNodeBadges: Null address passed");
         uint256[] memory owned = new uint256[](
             TAG_REWARDS_START + s_maxTagId * 4
         );
