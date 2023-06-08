@@ -37,7 +37,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     // bool s_allCurrentlyRewarded;
     uint256 [] s_randomWords;
 
-    uint256 private s_randomRewardsCounter;
+    uint256 public s_randomRewardsCounter;
 
     constructor(
         address vrfCoordinatorV2,
@@ -68,17 +68,27 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         override
         returns (bool upkeepNeeded, bytes memory /* performData */)
     {
-        bool timePassed = block.timestamp > (s_lastUpkeepTimestamp + i_rareMintDropInterval);
-        bool canDropRandom = s_randomRewardsCounter < s_randomRewardsMaxSupply;
         address [] memory users = i_stack3.getAllUserAddresses();
+
+        bool timePassed = block.timestamp > (s_lastUpkeepTimestamp + i_rareMintDropInterval);
+        bool noUsers = users.length == 0;
+        bool rareSupplyExists = s_randomRewardsCounter < i_rareNft.getTotalSupply() - 1;
+        bool maxDropExceeded = s_randomRewardsCounter < s_randomRewardsMaxSupply;
         bool allCurrentlyRewarded = true;
+
         for (uint256 i=0; i < users.length; i++) {
             if (i_rareNft.balanceOf(users[i]) < 1) {
                 allCurrentlyRewarded = false;
                 break;
             }
         }
-        upkeepNeeded = timePassed && canDropRandom && !allCurrentlyRewarded;
+
+        upkeepNeeded = timePassed && 
+                        maxDropExceeded && 
+                        !allCurrentlyRewarded && 
+                        !noUsers && 
+                        rareSupplyExists;
+
         return (upkeepNeeded, "0x0");
     }
 
@@ -87,8 +97,6 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
     ) external override {
 
         (bool upkeepNeeded, ) = checkUpkeep("");
-
-
 
         if(upkeepNeeded) {
             i_vrfCoordinator.requestRandomWords(
@@ -120,7 +128,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
             for (uint256 i = 0; i < 10; ) {
                 random /= 10;
                 index = uint256(keccak256(abi.encodePacked(random, i, block.timestamp))) % users.length;
-                if (!s_rareMintRewarded[users[index]] || i_rareNft.balanceOf(users[index]) < 1) {
+                if (!s_rareMintRewarded[users[index]] && i_rareNft.balanceOf(users[index]) < 1) {
                     break;
                 }
                 i++;
@@ -152,7 +160,7 @@ contract Stack3Automation is VRFConsumerBaseV2, KeeperCompatibleInterface, Ownab
         i_rareNft.transferFrom(
             i_rareNft.collectionMintAddress(), 
             _user, 
-            s_randomRewardsCounter
+            s_userToRareTokenId[_user]
         );
 
         emit RewardClaimed(block.timestamp, s_randomRewardsCounter, _user);

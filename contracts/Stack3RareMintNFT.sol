@@ -32,6 +32,8 @@ contract Stack3RareMintNFT is ERC721URIStorage, Ownable {
         _setTokenURI (newId, string(abi.encodePacked(baseUri, newId.toString(), ".json")));
     }
 
-
+    function getTotalSupply () public view returns (uint256) {
+        return s_tokenIds.current();
+    }
 
 }
