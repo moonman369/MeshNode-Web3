@@ -14,14 +14,14 @@ const RARE_NFT_MAX_SUPPLY = 30;
 const RARE_NFT_DROP_INTERVAL = 5 * 60;
 
 // Change this value to valid MeshNode.sol address during deployment';
-const MESHNODE_ADDRESS = "0x5bdaf907D2c794D9Fa5D0bee5884191ADE9475A3";
+const MESHNODE_ADDRESS = "0x5bdaf907D2c795D0bee5884191ADE9475A3";
 
 const main = async () => {
   const [deployer] = await ethers.getSigners();
   // MeshNodeRareMint
   const COLLECTION_MINT_ADDRESS = /*"0x00000"*/ deployer.address;
   const RARE_NFT_BASE_URI =
-    "https://hackathon.mypinata.cloud/ipfs/QmdWTGtbE2BifMrQMUy4cnVsY9jfwnpdSmb7SSrwYPcTTU/";
+    "https://hackathon.mypinata.cloud/ipfs/QmbANiYSXZHnCrpXK9KK8JqWB3HViS2imnPkYi6pYU8hXd/";
 
   const meshNodeRareNft = await deployMeshNodeRareNFT(
     deployer.address,
