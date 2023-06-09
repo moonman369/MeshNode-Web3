@@ -72,12 +72,13 @@ contract MeshNodeAutomation is VRFConsumerBaseV2, KeeperCompatibleInterface, Own
 
         bool timePassed = block.timestamp > (s_lastUpkeepTimestamp + i_rareMintDropInterval);
         bool noUsers = users.length == 0;
+        bool rewardableUsersExist = s_randomRewardsCounter <= users.length;
         bool rareSupplyExists = s_randomRewardsCounter < i_rareNft.getTotalSupply() - 1;
         bool maxDropExceeded = s_randomRewardsCounter < s_randomRewardsMaxSupply;
         bool allCurrentlyRewarded = true;
 
         for (uint256 i=0; i < users.length; i++) {
-            if (i_rareNft.balanceOf(users[i]) < 1) {
+            if (i_rareNft.balanceOf(users[i]) < 1 && !s_rareMintRewarded[users[i]]) {
                 allCurrentlyRewarded = false;
                 break;
             }
@@ -87,7 +88,8 @@ contract MeshNodeAutomation is VRFConsumerBaseV2, KeeperCompatibleInterface, Own
                         maxDropExceeded && 
                         !allCurrentlyRewarded && 
                         !noUsers && 
-                        rareSupplyExists;
+                        rareSupplyExists &&
+                        rewardableUsersExist;
 
         return (upkeepNeeded, "0x0");
     }
@@ -155,8 +157,6 @@ contract MeshNodeAutomation is VRFConsumerBaseV2, KeeperCompatibleInterface, Own
 
         s_unclaimedPresent[_user] = false;
 
-        s_rareMintRewarded[_user] = true;
-        // s_userToRareTokenId[_user] = s_randomRewardsCounter;
         i_rareNft.transferFrom(
             i_rareNft.collectionMintAddress(), 
             _user, 

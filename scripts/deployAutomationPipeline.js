@@ -14,14 +14,14 @@ const RARE_NFT_MAX_SUPPLY = 30;
 const RARE_NFT_DROP_INTERVAL = 5 * 60;
 
 // Change this value to valid MeshNode.sol address during deployment';
-const MESHNODE_ADDRESS = "0x5bdaf907D2c795D0bee5884191ADE9475A3";
+const MESHNODE_ADDRESS = "0xc65148bF07342533ba3E41A8d8Ed6fA3f5FB8f1d";
 
 const main = async () => {
   const [deployer] = await ethers.getSigners();
   // MeshNodeRareMint
   const COLLECTION_MINT_ADDRESS = /*"0x00000"*/ deployer.address;
   const RARE_NFT_BASE_URI =
-    "https://hackathon.mypinata.cloud/ipfs/QmbANiYSXZHnCrpXK9KK8JqWB3HViS2imnPkYi6pYU8hXd/";
+    "https://hackathon.mypinata.cloud/ipfs/QmVB7vsQyCcGfQYzAU3LQcbgw5optUau2BrXcnFU7TUf7S/";
 
   const meshNodeRareNft = await deployMeshNodeRareNFT(
     deployer.address,
@@ -56,7 +56,7 @@ main()
 
 /**
  * badges: 0x24C11d6d347DE57Bb435FFd66Ec7ECb960F11593
- * meshNode: 0x5bdaf907D2c794D9Fa5D0bee5884191ADE9475A3
- * rare: 0x52796D14B1B8101527E9CF1eC2A27124FECa13eF
- * auto: 0x14a8dB8CCA62551657a3175F2ee9Ae256aB93876
+ * meshNode: 0xc65148bF07342533ba3E41A8d8Ed6fA3f5FB8f1d
+ * rare: 0x40954DD3B90c319CC70Cb5662b27Ce2F26dDbC8D
+ * auto: 0x3F9F59EB788dbCfAaf530dDF3685bb255D40E46d
  */
